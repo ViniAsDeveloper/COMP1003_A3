@@ -48,6 +48,37 @@ class RigidBody:
         self.speed = Vector2D(self.acceleration.X * delta_time, self.acceleration.Y * delta_time)
         self.pos = Vector2D(self.speed.X * delta_time, self.speed.Y * delta_time)
 
+#class TextureManager:
+#    def __init__(self):
+#        self.texture_map = {}
+#
+#    def save_texture(self, texture_ID, texture):
+#        self.texture_map[texture_ID] = texture
+#
+#class Renderer:
+#    def __init__(self, window):
+#        self.window = window
+#
+#    def draw(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h):
+#        
+#
+#    def draw_frame(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h, sprite_frame):
+#        
+#
+#class Animation:
+#    def __init__(self, renderer, texture_ID, frames, speed):
+#        self.renderer = renderer
+#        self.texture_ID = texture_ID
+#        self.frames = frames
+#        self.speed = speed * 1000
+#        self.sprite_frame = 0
+#
+#    def update(self):
+#        self.sprite_frame = (time.perf_counter_ns()/speed) % frames
+#
+#    def render(self, pos_x, pos_y, sprite_w, sprite_h):
+#        self.renderer.draw_frame(self.texture_ID. pos_x, pos_y, sprite_w, sprite_h, self.sprite_frame)
+
 class MenuState:
     def __init__(self, engine, window):
         self.window = window
@@ -69,7 +100,7 @@ class MenuState:
     def render(self, interpol_ref):
         for object in self.objects:
             self.window.addstr(3, 0, object.ID)
-        self.window.addstr(2, 0, self.text)
+        self.window.addstr(2, 0, self.text, curses.color_pair(1))
 
     def finalise(self):
         print("a")
@@ -130,7 +161,7 @@ class Engine:
 
             alpha = accumulator / FIXED_DT
             self.render(alpha)
-            curses.napms(int(FIXED_DT - frame_time))
+            curses.napms(int(FRAME_TIME - frame_time))
         self.current_state.finalise()
 
     def change_state(self, next_state):
