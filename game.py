@@ -11,26 +11,73 @@ FIXED_DT = 1000.0 / 30.0
 MAX_FRAME_TIME = 25.0
 FRAME_TIME = 32.0
 
+class Vector2D:
+    def __init__(self, X, Y):
+        self.X = X
+        self.Y = Y
+
+class Object:
+    def __init__(self, ID):
+        self.ID = ID
+
+class RigidBody:
+    def __init__(self, X=0, Y=0, W=0, H=0, mass=0, gravity=0):
+        self.pos = Vector2D(X, Y)
+        self.size = Vector2D(W, H)
+        self.mass = mass
+        self.gravity = gravity
+        self.force = Vector2D(0, 0)
+        self.acceleration = Vector2D(0, 0)
+        self.speed = Vector2D(0, 0)
+
+    def translate(self, X, Y):
+        self.X += X
+        self.Y += Y
+
+    def apply_force(self, force):
+        self.force.X += force.X
+        self.force.Y += force.Y
+
+    def deny_force(self):
+        self.force.X = 0
+        self.force.Y = 0
+
+    def update(self, delta_time):
+        self.acceleration.X = self.force.X / mass
+        self.acceleration.Y = self.gravity + self.force.Y / mass
+        self.speed = Vector2D(self.acceleration.X * delta_time, self.acceleration.Y * delta_time)
+        self.pos = Vector2D(self.speed.X * delta_time, self.speed.Y * delta_time)
+
 class MenuState:
-    def __init__(self, window):
+    def __init__(self, engine, window):
         self.window = window
+        self.engine = engine
 
     def init(self):
+        self.objects = [
+        Object("avude")
+        ]
         self.text = ""
 
     def update(self, delta_time):
+        key = self.window.getch()
+        if key == ord('q'):
+            self.engine.stop()
         self.text = str(time.perf_counter_ns())
         return MENU
 
     def render(self, interpol_ref):
-        self.window.addstr(3, 0, self.text)
+        for object in self.objects:
+            self.window.addstr(3, 0, object.ID)
+        self.window.addstr(2, 0, self.text)
 
     def finalise(self):
         print("a")
 
 class Quit:
-    def __init__(self, window):
-        self.window = window
+    def __init__(self, engine, renderer):
+        self.renderer = renderer
+        self.engine = engine
 
     def init(self):
         self.text = ""
@@ -50,8 +97,9 @@ class Engine:
     is_running = True
     time = 0
     def __init__(self, window):
-        self.current_state = states[self.current_state_code](window)
         self.window = window
+        self.window.nodelay(True)
+        self.current_state = states[self.current_state_code](self, window)
 
     def update(self, delta_time):
         next_state = self.current_state.update(delta_time)
@@ -83,14 +131,15 @@ class Engine:
             alpha = accumulator / FIXED_DT
             self.render(alpha)
             curses.napms(int(FIXED_DT - frame_time))
-
+        self.current_state.finalise()
 
     def change_state(self, next_state):
         self.current_state.finalise()
         self.current_state_code = next_state
-        self.current_state = states[next_state](self.window)
+        self.current_state = states[next_state](self, self.window)
 
-
+    def stop(self):
+        self.is_running = False
 
 def main(window):
     engine = Engine(window)
