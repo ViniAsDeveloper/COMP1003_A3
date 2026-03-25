@@ -1,6 +1,10 @@
 import curses
 import time
 
+WHITE = 0
+RED = 1
+BLACK = 2
+
 MENU = 0
 QUIT = 1
 PLAYING = 2
@@ -48,36 +52,49 @@ class RigidBody:
         self.speed = Vector2D(self.acceleration.X * delta_time, self.acceleration.Y * delta_time)
         self.pos = Vector2D(self.speed.X * delta_time, self.speed.Y * delta_time)
 
-#class TextureManager:
-#    def __init__(self):
-#        self.texture_map = {}
-#
-#    def save_texture(self, texture_ID, texture):
-#        self.texture_map[texture_ID] = texture
-#
-#class Renderer:
-#    def __init__(self, window):
-#        self.window = window
-#
-#    def draw(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h):
+class Texture:
+    self.sections = []
+    def __init__(self, data):
+        
+
+    def edit(self, section, data)
+
+class TextureManager:
+    def __init__(self):
+        self.texture_map = {}
+
+    def save_texture(self, texture_ID, texture):
+        self.texture_map[texture_ID] = texture
+
+    def load_texture(self, texture_ID, filepath):
+        
+
+    def get_texture(self, texture_ID):
+        return self.texture_map.get(texture_ID)
+
+class Renderer:
+    def __init__(self, window):
+        self.window = window
+
+#    adef draw(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h):
 #        
 #
 #    def draw_frame(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h, sprite_frame):
 #        
-#
-#class Animation:
-#    def __init__(self, renderer, texture_ID, frames, speed):
-#        self.renderer = renderer
-#        self.texture_ID = texture_ID
-#        self.frames = frames
-#        self.speed = speed * 1000
-#        self.sprite_frame = 0
-#
-#    def update(self):
-#        self.sprite_frame = (time.perf_counter_ns()/speed) % frames
-#
-#    def render(self, pos_x, pos_y, sprite_w, sprite_h):
-#        self.renderer.draw_frame(self.texture_ID. pos_x, pos_y, sprite_w, sprite_h, self.sprite_frame)
+
+class Animation:
+    def __init__(self, renderer, texture_ID, frames, speed):
+        self.renderer = renderer
+        self.texture_ID = texture_ID
+        self.frames = frames
+        self.speed = speed * 1000
+        self.sprite_frame = 0
+
+    def update(self):
+        self.sprite_frame = (time.perf_counter_ns()/speed) % frames
+
+    def render(self, pos_x, pos_y, sprite_w, sprite_h):
+        self.renderer.draw_frame(self.texture_ID. pos_x, pos_y, sprite_w, sprite_h, self.sprite_frame)
 
 class MenuState:
     def __init__(self, engine, window):
@@ -86,7 +103,7 @@ class MenuState:
 
     def init(self):
         self.objects = [
-        Object("avude")
+        Object("avude♠")
         ]
         self.text = ""
 
@@ -99,8 +116,8 @@ class MenuState:
 
     def render(self, interpol_ref):
         for object in self.objects:
-            self.window.addstr(3, 0, object.ID)
-        self.window.addstr(2, 0, self.text, curses.color_pair(1))
+            self.window.addstr(3, 0, object.ID, curses.color_pair(0))
+        self.window.addstr(2, 0, self.text)
 
     def finalise(self):
         print("a")
@@ -131,6 +148,7 @@ class Engine:
         self.window = window
         self.window.nodelay(True)
         self.current_state = states[self.current_state_code](self, window)
+        curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
 
     def update(self, delta_time):
         next_state = self.current_state.update(delta_time)
