@@ -153,14 +153,19 @@ class Renderer:
         self.texture_manager = texture_manager
         self.window = window
 
-    def draw(self, texture_ID, pos, src_rect):
+    def draw(self, texture_ID, pos, src_rect=None):
         texture = self.texture_manager.get_texture(texture_ID)
         if texture:
+            if not src_rect:
+                src_rect = Rect(0, 0, texture.size.X, texture.size.Y)
             for i in range(0, src_rect.H):
                 for j in range(0, src_rect.W):
                     if src_rect.X + j > texture.size.X:
                         break
-                    window.addch(pos.X + j, pos.Y + i, texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].char, texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].color)
+                    logger.log(str(texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].char))
+                    logger.log(str(texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].color))
+                    curses.napms(100)
+                    self.window.addch(pos.Y + i, pos.X + j, texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].char, texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].color)
                 if src_rect.Y + i > texture.size.Y:
                     break
 
@@ -213,7 +218,7 @@ class MenuState:
         for object in self.objects:
             self.window.addstr(3, 0, object.ID, curses.color_pair(0))
         self.window.addstr(2, 0, self.text)
-        self.window.addch(1, 0, self.texture_manager.get_texture("avude").pixel_matrix[0][0].char)
+        self.renderer.draw("avude", Vector2D(6, 5))
         self.window.addstr(4, 0, str(self.FPS_text))
         self.FPS += 1
 
@@ -247,7 +252,8 @@ class Engine:
     def __init__(self, window):
         self.window = window
         self.window.nodelay(True)
-        self.current_state = states[self.current_state_code](self, window, self.texture_manager, self.clock, 0)
+        self.renderer = Renderer(window, self.texture_manager)
+        self.current_state = states[self.current_state_code](self, window, self.texture_manager, self.clock, self.renderer)
         curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
         self.texture_manager.load_texture("avude", "avude.txt")
 
@@ -282,7 +288,6 @@ class Engine:
             alpha = accumulator / FIXED_DT
             self.render(alpha)
             delay = int(FRAME_TIME - (previous_time - time.perf_counter_ns() / 1_000_000))
-            logger.log(delay)
             curses.napms(delay)
         self.current_state.finalise()
 
