@@ -52,35 +52,59 @@ class RigidBody:
         self.speed = Vector2D(self.acceleration.X * delta_time, self.acceleration.Y * delta_time)
         self.pos = Vector2D(self.speed.X * delta_time, self.speed.Y * delta_time)
 
-class Texture:
-    self.sections = []
-    def __init__(self, data):
-        
+class Section:
+    def __init__(self, pos_x, content, color):
+        self.pos_x = pos_x
+        self.content = content
+        self.color = color
 
-    def edit(self, section, data)
+class Line:
+    sections = []
+    def __init__(self, pos_y, sections):
+        self.pos_y = pos_y
+        for i in range(0, len(sections)):
+            self.sections.append(Section(sections[i][0], sections[i][1], sections[i][2]))
+
+class Texture:
+    lines = []
+    def __init__(self, data):
+        for i in range(0, len(data), 4):
+            lines.append
+
+    def edit(self, section, data):
+        if -1 < section < len(self.sections):
+            self.section[section] = (data[1], data[2], data[3], data[4])
 
 class TextureManager:
     def __init__(self):
         self.texture_map = {}
 
-    def save_texture(self, texture_ID, texture):
-        self.texture_map[texture_ID] = texture
-
     def load_texture(self, texture_ID, filepath):
-        
+        try:
+            file = open(filepath, "r")
+            raw_data = file.read()
+            data = raw_data.split("\n")
+            self.texture_map[texture_ID] = Texture(data)
+            return True
+        except:
+            return False
 
     def get_texture(self, texture_ID):
         return self.texture_map.get(texture_ID)
 
 class Renderer:
-    def __init__(self, window):
+    def __init__(self, window, texture_manager):
         self.window = window
+        self.texture_manager = texture_manager
 
-#    adef draw(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h):
-#        
-#
+    def draw(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h):
+        texture = self.texture_manager.get_texture(texture_ID)
+        if texture:
+            for i in range(0, len(texture.sections)):
+                if texture.sections[i][1] < sprite_h:
+                    self.window
+
 #    def draw_frame(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h, sprite_frame):
-#        
 
 class Animation:
     def __init__(self, renderer, texture_ID, frames, speed):
