@@ -7,12 +7,13 @@ BLACK = 2
 
 MENU = 0
 QUIT = 1
-PLAYING = 2
-VICTORY = 3
-GAMEOVER = 4
+EDIT = 2
+PLAYING = 3
+VICTORY = 4
+GAMEOVER = 5
 
 FIXED_DT = 1000.0 / 30.0
-MAX_FRAME_TIME = 50.0
+MAX_FRAME_TIME = 100.0
 FRAME_TIME = 33.0
 
 class Logger:
@@ -162,15 +163,92 @@ class Renderer:
                 for j in range(0, src_rect.W):
                     if src_rect.X + j > texture.size.X:
                         break
-                    logger.log(str(texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].char))
-                    logger.log(str(texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].color))
-                    curses.napms(100)
-                    self.window.addch(pos.Y + i, pos.X + j, texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].char, texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].color)
+                    self.window.addch(pos.Y + i, pos.X + j, texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].char, curses.color_pair(texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].color))
                 if src_rect.Y + i > texture.size.Y:
                     break
 
-#    def draw_frame(self, texture_ID, pos_x, pos_y, sprite_w, sprite_h, sprite_frame):
+    def draw_text(self, text, pos, color):
+        self.window.addstr(pos.Y, pos.X, text, curses.color_pair(color))
+
+#    def draw_frame(self, texture_ID, pos, sprite_sizea, sprite_frame):
 #        
+
+class TextBox:
+    def __init__(self, placeholder, dimensions, renderer, color=0, border=None, border_color=None):
+        self.rect = dimensions
+        if border and self.rect.H < 3:
+            self.rect.H = 3
+        if border and self.rect.W < 3:
+            self.rect.W = 3
+        self.has_border = border
+        if border_color:
+            self.border_color = border_color
+        else:
+            self.border_color = color
+        self.color = color
+        self.placeholder = placeholder
+        self.renderer = renderer
+        self.text = ""
+        self.has_text = False
+        self.cursor_pos = Vector2D(0, 0)
+
+    def draw(self):
+        if self.has_border:
+            self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y), self.border_color)
+            self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
+            self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W, self.rect.Y), self.border_color)
+            for i in range(self.rect.Y + 1, self.rect.Y + self.rect.H - 1):
+                self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, i), self.border_color)
+                self.renderer.draw_text("|", Vector2D(self.rect.X, i), self.border_color)
+            self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W, self.rect.Y + self.rect.H - 1), self.border_color)
+            self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.border_color)
+            self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y + self.rect.H - 1), self.border_color)
+            if not self.has_text:
+                self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
+                return
+            self.renderer.draw_text(self.text, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
+            return
+        if not self.has_text:
+            self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
+            return
+        self.renderer.draw_text(self.text, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
+
+    def add_char(self, char, index=None):
+        if index:
+            self.text = add_char_at_index(self.text, char, index)
+            return
+        self.has_text = True
+        self.text += char
+
+    def backspace(self):
+        self.text = remove_char_at_index(self.text, len(self.text) - 1)
+
+    def add_char_at_index(self, text, char, index):
+        return text[:index] + char + text[index:]
+
+    def remove_char_at_index(self, text, index):
+        return text[:index] + text[index+1:]
+
+    def process(self, key):
+        if key == curses.KEY_BACKSPACE:
+            if not self.has_text:
+                return
+            self.text = self.remove_char_at_index(self.text, self.cursor_pos.X - 1)
+            self.cursor_pos.X -= 1
+            if len(self.text) == 0:
+                self.has_text = False
+        elif key == curses.KEY_DC:
+            if not self.has_text:
+                return
+            self.text = self.remove_char_at_index(self.text, self.cursor_pos.X)
+            if self.cursor_pos.X > len(self.text):
+                self.cursor_pos.X -= 1
+            if len(self.text) == 0:
+                self.has_text = False
+        elif 31 < key < 127:
+            self.text = self.add_char_at_index(self.text, chr(key), self.cursor_pos.X)
+            self.cursor_pos.X += 1
+            self.has_text = True
 
 class Animation:
     def __init__(self, renderer, texture_ID, frames, speed):
@@ -208,6 +286,8 @@ class MenuState:
         key = self.window.getch()
         if key == ord('q'):
             self.engine.stop()
+        elif key == ord('e'):
+            return EDIT
         self.text = str(time.perf_counter_ns())
         if self.clock.is_over(-99):
             self.FPS_text = self.FPS
@@ -218,9 +298,46 @@ class MenuState:
         for object in self.objects:
             self.window.addstr(3, 0, object.ID, curses.color_pair(0))
         self.window.addstr(2, 0, self.text)
-        self.renderer.draw("avude", Vector2D(6, 5))
+        for i in range(0, 10):
+            self.renderer.draw("avude", Vector2D(6, 5))
         self.window.addstr(4, 0, str(self.FPS_text))
         self.FPS += 1
+
+    def finalise(self):
+        print("a")
+
+class Edit:
+    def __init__(self, engine, window, texture_manager, clock, renderer):
+        self.window = window
+        self.renderer = renderer
+        self.engine = engine
+        self.texture_manager = texture_manager
+        self.clock = clock
+
+    def init(self):
+        self.selected = None
+        self.textbox = TextBox("Enter texture file name", Rect(10, 10, 50, 3), self.renderer, RED, True)
+
+    def update(self, delta_time):
+        key = self.window.getch()
+        if key == ord('q') and str(self.selected) != str(self.textbox):
+            self.engine.stop()
+            return EDIT
+        if key == 27:
+            self.engine.stop()
+            return EDIT
+        if key == 9:
+            if str(self.selected) == str(self.textbox):
+                logger.log("Tab pressed")
+                self.selected = None
+            else:
+                self.selected = self.textbox
+        if self.selected == self.textbox:
+            self.textbox.process(key)
+        return EDIT
+
+    def render(self, interpol_ref):
+        self.textbox.draw()
 
     def finalise(self):
         print("a")
@@ -241,7 +358,7 @@ class Quit:
     def finalise(self):
         print("end Quit")
 
-states = [ MenuState, Quit ]
+states = [ MenuState, Quit, Edit ]
 
 class Engine:
     current_state_code = MENU
@@ -254,6 +371,7 @@ class Engine:
         self.window.nodelay(True)
         self.renderer = Renderer(window, self.texture_manager)
         self.current_state = states[self.current_state_code](self, window, self.texture_manager, self.clock, self.renderer)
+        curses.start_color()
         curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
         self.texture_manager.load_texture("avude", "avude.txt")
 
@@ -275,26 +393,32 @@ class Engine:
 
         while self.is_running:
             self.clock.tick()
-            current_time = time.perf_counter_ns() / 1_000_000
-            frame_time = current_time - previous_time
-            previous_time = current_time
+            frame_start = time.perf_counter_ns() / 1_000_000
+            frame_time = frame_start - previous_time
+            previous_time = frame_start
             frame_time = min(frame_time, MAX_FRAME_TIME)
             accumulator += frame_time
 
             while accumulator >= FIXED_DT:
                 self.update(FIXED_DT)
                 accumulator -= FIXED_DT
-
             alpha = accumulator / FIXED_DT
             self.render(alpha)
-            delay = int(FRAME_TIME - (previous_time - time.perf_counter_ns() / 1_000_000))
-            curses.napms(delay)
+            frame_end = time.perf_counter_ns() / 1_000_000
+            elapsed = frame_end - frame_start
+            sleep_time = FRAME_TIME - elapsed
+            if sleep_time > 0:
+                curses.napms(int(sleep_time))
+            else:
+                curses.napms(1)
         self.current_state.finalise()
 
     def change_state(self, next_state):
         self.current_state.finalise()
+        self.window.clear()
         self.current_state_code = next_state
-        self.current_state = states[next_state](self, self.window, self.texture_manager, self.clock, 0)
+        self.current_state = states[next_state](self, self.window, self.texture_manager, self.clock, self.renderer)
+        self.current_state.init()
 
     def stop(self):
         self.is_running = False
