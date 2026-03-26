@@ -17,6 +17,7 @@ MAX_FRAME_TIME = 100.0
 FRAME_TIME = 33.0
 
 class Logger:
+
     def __init__(self):
         self.file = open("main.log", "a")
 
@@ -26,6 +27,7 @@ class Logger:
 logger = Logger()
 
 class Timer:
+
     def __init__(self, time_ms, repeat):
         self.start_time = time.perf_counter_ns()
         self.time_ns = time_ms * 1_000_000
@@ -33,6 +35,7 @@ class Timer:
         self.is_over = False
 
 class Clock:
+
     def __init__(self):
         self.init_time = time.perf_counter_ns()
         self.timers = {}
@@ -57,15 +60,28 @@ class Clock:
                 timer.is_over = True
 
 class Vector2D:
+
     def __init__(self, X, Y):
         self.X = X
         self.Y = Y
 
 class Object:
+
     def __init__(self, ID):
         self.ID = ID
 
+class Drawable(Object):
+
+    def __init__(self, ID, is_visible, renderer):
+        super().__init__(ID)
+        self.is_visible = is_visible
+        self.renderer = renderer
+
+#    def draw(self):
+        # draw itself
+
 class RigidBody:
+
     def __init__(self, X=0, Y=0, W=0, H=0, mass=0, gravity=0):
         self.pos = Vector2D(X, Y)
         self.size = Vector2D(W, H)
@@ -94,6 +110,7 @@ class RigidBody:
         self.pos = Vector2D(self.speed.X * delta_time, self.speed.Y * delta_time)
 
 class Rect:
+
     def __init__(self, X, Y, W, H):
         self.X = X
         self.Y = Y
@@ -104,17 +121,20 @@ class Rect:
         return rect.X < self.X + self.W and self.X < rect.X + rect.W and rect.Y < self.Y + self.H and self.Y < rect.Y + rect.H
 
 class Pixel:
+
     def __init__(self, char, color):
         self.char = ord(char)
         self.color = color
 
 class Texture:
     pixel_matrix = []
+
     def __init__(self, width, height, pixel_matrix):
         self.size = Vector2D(width, height)
         self.pixel_matrix = pixel_matrix
 
 class TextureManager:
+
     def __init__(self):
         self.texture_map = {}
 
@@ -150,6 +170,7 @@ class TextureManager:
         return self.texture_map.get(texture_ID)
 
 class Renderer:
+
     def __init__(self, window, texture_manager):
         self.texture_manager = texture_manager
         self.window = window
@@ -173,8 +194,10 @@ class Renderer:
 #    def draw_frame(self, texture_ID, pos, sprite_sizea, sprite_frame):
 #        
 
-class TextBox:
-    def __init__(self, placeholder, dimensions, renderer, color=0, border=None, border_color=None):
+class TextBox(Drawable):
+
+    def __init__(self, ID, placeholder, dimensions, renderer, is_visible, color=0, border=None, border_color=None):
+        super().__init__(ID, is_visible, renderer)
         self.rect = dimensions
         if border and self.rect.H < 3:
             self.rect.H = 3
@@ -191,8 +214,12 @@ class TextBox:
         self.text = ""
         self.has_text = False
         self.cursor_pos = Vector2D(0, 0)
+        self.is_visible = is_visible
 
     def draw(self):
+        if not self.is_visible:
+            return
+
         if self.has_border:
             self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y), self.border_color)
             self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
@@ -230,14 +257,14 @@ class TextBox:
         return text[:index] + text[index+1:]
 
     def process(self, key):
-        if key == curses.KEY_BACKSPACE:
+        if key == curses.KEY_BACKSPACE or key == 127:
             if not self.has_text:
                 return
             self.text = self.remove_char_at_index(self.text, self.cursor_pos.X - 1)
             self.cursor_pos.X -= 1
             if len(self.text) == 0:
                 self.has_text = False
-        elif key == curses.KEY_DC:
+        elif key == curses.KEY_DC or key == 127:
             if not self.has_text:
                 return
             self.text = self.remove_char_at_index(self.text, self.cursor_pos.X)
@@ -246,11 +273,26 @@ class TextBox:
             if len(self.text) == 0:
                 self.has_text = False
         elif 31 < key < 127:
+            if len(self.text) == self.rect.W - 2:
+                return
             self.text = self.add_char_at_index(self.text, chr(key), self.cursor_pos.X)
             self.cursor_pos.X += 1
             self.has_text = True
 
+    def hide(self):
+        self.is_visible = False
+
+    def show(self):
+        self.is_visible = True
+
+    def focus(self):
+        self.border_color = RED
+
+    def unfocus(self):
+        self.border_color = WHITE
+
 class Animation:
+
     def __init__(self, renderer, texture_ID, frames, speed):
         self.renderer = renderer
         self.texture_ID = texture_ID
@@ -265,6 +307,7 @@ class Animation:
         self.renderer.draw_frame(self.texture_ID. pos_x, pos_y, sprite_w, sprite_h, self.sprite_frame)
 
 class MenuState:
+
     def __init__(self, engine, window, texture_manager, clock, renderer):
         self.window = window
         self.renderer = renderer
@@ -307,42 +350,91 @@ class MenuState:
         print("a")
 
 class Edit:
+
     def __init__(self, engine, window, texture_manager, clock, renderer):
         self.window = window
         self.renderer = renderer
         self.engine = engine
         self.texture_manager = texture_manager
         self.clock = clock
+        self.texture = None
+        self.ready = False
+        self.objects = []
+        self.filepath = None
 
     def init(self):
-        self.selected = None
-        self.textbox = TextBox("Enter texture file name", Rect(10, 10, 50, 3), self.renderer, RED, True)
+        self.selected = 0
+        self.textbox = TextBox("filepath", "Enter texture file name", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True)
+        self.objects.append(self.textbox)
 
     def update(self, delta_time):
         key = self.window.getch()
-        if key == ord('q') and str(self.selected) != str(self.textbox):
-            self.engine.stop()
+        if not self.filepath:
+            if key == ord('q') and self.selected != -1:
+                self.engine.stop()
+                return EDIT
+            if key == 27:
+                self.engine.stop()
+                return EDIT
+            if key == 9:
+                self.select_next()
+                return EDIT
+            if key == 13:
+                self.filepath = self.textbox.text
+                self.load_texture()
+                return EDIT
             return EDIT
-        if key == 27:
-            self.engine.stop()
-            return EDIT
-        if key == 9:
-            if str(self.selected) == str(self.textbox):
-                logger.log("Tab pressed")
-                self.selected = None
-            else:
-                self.selected = self.textbox
-        if self.selected == self.textbox:
-            self.textbox.process(key)
+        if not self.ready:
+            if len(self.objects) == 1:
+                self.textbox.hide()
+                self.width_box = TextBox("width", "Enter the texture width", Rect(10, 10, 20, 3), self.renderer, True, WHITE, True)
+                self.objects.append(self.width_box)
+                self.height_box = TextBox("heigth", "Enter the texture height", Rect(10, 15, 20, 3), self.renderer, True, WHITE, True)
+                self.objects.append(self.height_box)
+                self.width_box.border_color = RED
+                return EDIT
+            if key == ord('q') or key == 27:
+                self.engine.stop()
+                return EDIT
+            if key == 9:
+                self.select_next()
+                return EDIT
+            if 47 < key < 58 or key == 127 or key == curses.KEY_BACKSPACE or key == curses.KEY_DC:
+                if self.selected != -1:
+                    self.objects[self.selected].process(key)
         return EDIT
 
     def render(self, interpol_ref):
-        self.textbox.draw()
+        for object in self.objects:
+            object.draw()
 
     def finalise(self):
         print("a")
 
+    def load_texture(self):
+        if self.texture_manager.load_texture(-99, self.filepath):
+            self.texture = self.texture_manager.get_texture(-99)
+            self.ready = True
+        else:
+            self.texture = Texture(0, 0, [[]])
+
+    def select_next(self):
+        if self.selected >= 0:
+            self.objects[self.selected].unfocus()
+        i = 0
+        while not self.objects[self.selected].is_visible:
+            self.selected += 1
+            i += 1
+            if self.selected > len(self.objects) - 1:
+                self.selected = 0
+            if i == len(self.objects):
+                self.selected = -1
+                return
+        if self.selected >= 0:
+            self.objects[self.selected].focus()
+
 class Quit:
+
     def __init__(self, engine, renderer):
         self.renderer = renderer
         self.engine = engine
@@ -366,6 +458,7 @@ class Engine:
     time = 0
     texture_manager = TextureManager()
     clock = Clock()
+
     def __init__(self, window):
         self.window = window
         self.window.nodelay(True)
