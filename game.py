@@ -362,12 +362,9 @@ class TextBox(Drawable):
     def draw(self):
         if not self.is_visible:
             return
-        
-        if not self.has_text:
-            self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
-            return
-        self.renderer.draw_text(self.text, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
-            return
+
+        self.border.draw()
+
         if not self.has_text:
             self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
             return
@@ -417,9 +414,9 @@ class TextBox(Drawable):
                 self.has_text = True
         elif event.type == FOCUS:
             if event.data == True:
-                self.border_color = RED
+                self.border.color = RED
             else:
-                self.border_color = WHITE
+                self.border.color = WHITE
         elif event.type == HIDE:
             if event.type == True:
                 self.is_visible = False
@@ -428,7 +425,7 @@ class TextBox(Drawable):
 
 class EditableBuffer(Drawable):
 
-    def __init__(self, ID, dimensions, is_visible, renderer, texture_ID=None)
+    def __init__(self, ID, dimensions, is_visible, renderer, texture_ID=None):
         super().__init__(ID, is_visible, renderer)
         self.rect = dimensions
         self.texture_manager = renderer.texture_manager
@@ -446,18 +443,8 @@ class EditableBuffer(Drawable):
             self.rect.H = self.texture_manager.get_texture(self.texture_ID).size.Y
 
     def draw(self):
+        self.renderer
         self.renderer.draw(self.texture_ID, Vector2D(self.rect.X, self.rect.Y))
-
-    def draw_border(self):
-        self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y), self.border_color)
-        self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y + self.rect.W - 1), self.border_color)
-        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W - 1, self.rect.Y), self.border_color)
-        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W - 1, self.rect.Y + self.rect.H - 1), self.border_color)
-        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
-        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.border_color)
-        for i in range(self.rect.Y + 1, self.rect.Y + self.rect.H - 1):
-            self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, i), self.border_color)
-            self.renderer.draw_text("|", Vector2D(self.rect.X, i), self.border_color)
 
     def handle(self, event):
         if event.type == FOCUS:
@@ -564,10 +551,12 @@ class Edit:
         self.texture = None
         self.objects = ObjectContainer()
         self.stage = self.FILE
+        self.FPS = 0
+        self.FPS_text = 0
 
     def init(self):
         self.objects.add_object(TextBox("filepath", "Enter the texture filepath", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE), True)
-        self.objects.add_object(QuitButton("quit_button", True, self.renderer, Vector2D(168, 0)), True)
+        self.objects.add_object(QuitButton("quit_button", True, self.renderer, Vector2D(0, 0)), True)
         self.objects.focus_by_id("filepath")
 
     def update(self, delta_time):
