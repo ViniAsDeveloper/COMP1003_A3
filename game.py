@@ -1,10 +1,16 @@
 import curses
 import time
 
+# object types
+BASE = 0
+DRAWABLE = 1
+
+# color codes
 WHITE = 0
 RED = 1
 BLACK = 2
 
+# state codes
 MENU = 0
 QUIT = 1
 EDIT = 2
@@ -12,9 +18,20 @@ PLAYING = 3
 VICTORY = 4
 GAMEOVER = 5
 
+# framerate limiter constants
 FIXED_DT = 1000.0 / 30.0
 MAX_FRAME_TIME = 100.0
 FRAME_TIME = 33.0
+
+# event types
+KEY = 0
+FOCUS = 1
+HIDE = 2
+
+class Event:
+    def __init__(self, type, data):
+        self.type = type
+        self.data = data
 
 class Logger:
 
@@ -67,18 +84,120 @@ class Vector2D:
 
 class Object:
 
-    def __init__(self, ID):
+    def __init__(self, ID, type):
         self.ID = ID
+        self.type = type
 
 class Drawable(Object):
 
     def __init__(self, ID, is_visible, renderer):
-        super().__init__(ID)
+        super().__init__(ID, DRAWABLE)
         self.is_visible = is_visible
         self.renderer = renderer
 
 #    def draw(self):
         # draw itself
+
+class ObjectContainer:
+
+    def __init__(self):
+        self.map = {}
+        self.visible = []
+        self.focusable = []
+        self.in_focus = []
+
+    def add_object(self, object, can_receive_focus):
+        self.map[object.ID] = object
+        if object.type == DRAWABLE and object.is_visible:
+            self.visible.append(object.ID)
+        if can_receive_focus:
+            self.focusable.append(object.ID)
+
+    def remove_object_by_id(self, ID):
+        if not self.map.get(ID):
+            return
+        del self.map[ID]
+        try:
+            self.visible.remove(ID)
+            self.focusable.remove(ID)
+            self.in_focus.remove(ID)
+            return
+        except:
+            return
+
+    def get_object_by_id(self, ID):
+        return self.map.get(ID)
+
+    def draw(self):
+        for i in range(0, len(self.visible)):
+            self.map.get(self.visible[i]).draw()
+
+    def show_object(self, ID):
+        if not self.map.get(ID):
+            return
+        try:
+            index = self.visible.index(ID)
+        except:
+            self.visible.append(ID)
+
+    def hide_object(self, ID):
+        if not self.map.get(ID):
+            return
+        try:
+            index = self.visible.index(ID)
+            del self.visible[index]
+        except:
+            return
+
+    def get_focused(self):
+        return self.in_focus
+
+    def focus_by_id(self, ID):
+        if len(self.focusable) < 1:
+            return
+        if not self.map.get(ID):
+            return
+        self.in_focus.append(ID)
+        self.map.get(ID).handle(Event(FOCUS, True))
+
+    def unfocus_by_id(self, ID):
+        if len(self.in_focus) < 1:
+            return
+        if not self.map.get(ID):
+            return
+        try:
+            index = self.in_focus.index(ID)
+            self.in_focus[index].handle(Event(FOCUS, False))
+            del self.in_focus[index]
+        except:
+            return
+
+    def unfocus_all(self):
+        for i in range(0, len(self.in_focus)):
+            self.in_focus[i].handle(Event(FOCUS, False))
+        self.in_focus.clear()
+
+    def focus_next(self):
+        for i in range(0, len(self.in_focus)):
+            self.map.get(self.in_focus[i]).handle(Event(FOCUS, False))
+
+        if not self.in_focus:
+            index = 0
+        else:
+            index = self.focusable.index(self.in_focus[-1])
+            if index == len(self.focusable) - 1:
+                index = 0
+            else:
+                index += 1
+        self.in_focus.clear()
+        self.in_focus.append(self.focusable[index])
+        self.map.get(self.focusable[index]).handle(Event(FOCUS, True))
+
+
+    def handle(self, event):
+        if self.in_focus:
+            for i in range(0, len(self.in_focus)):
+                self.map.get(self.in_focus[i]).handle(event)
 
 class RigidBody:
 
@@ -194,9 +313,30 @@ class Renderer:
 #    def draw_frame(self, texture_ID, pos, sprite_sizea, sprite_frame):
 #        
 
+class Border:
+
+    def __init__(self, is_visible, renderer, rect, color=WHITE):
+        self.is_visible = is_visible
+        self.renderer = renderer
+        self.rect = rect
+        self.color = color
+
+    def draw(self):
+        if not self.is_visible:
+            return
+        self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y), self.color)
+        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.color)
+        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W, self.rect.Y), self.color)
+        for i in range(self.rect.Y + 1, self.rect.Y + self.rect.H - 1):
+            self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, i), self.color)
+            self.renderer.draw_text("|", Vector2D(self.rect.X, i), self.color)
+        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W, self.rect.Y + self.rect.H - 1), self.color)
+        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.color)
+        self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y + self.rect.H - 1), self.color)
+
 class TextBox(Drawable):
 
-    def __init__(self, ID, placeholder, dimensions, renderer, is_visible, color=0, border=None, border_color=None):
+    def __init__(self, ID, placeholder, dimensions, renderer, is_visible, color=0, border=None, border_color=None, allowed=""):
         super().__init__(ID, is_visible, renderer)
         self.rect = dimensions
         if border and self.rect.H < 3:
@@ -205,7 +345,7 @@ class TextBox(Drawable):
             self.rect.W = 3
         self.has_border = border
         if border_color:
-            self.border_color = border_color
+            self.border = Border(
         else:
             self.border_color = color
         self.color = color
@@ -215,25 +355,16 @@ class TextBox(Drawable):
         self.has_text = False
         self.cursor_pos = Vector2D(0, 0)
         self.is_visible = is_visible
+        self.allowed = allowed
 
     def draw(self):
         if not self.is_visible:
             return
 
-        if self.has_border:
-            self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y), self.border_color)
-            self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
-            self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W, self.rect.Y), self.border_color)
-            for i in range(self.rect.Y + 1, self.rect.Y + self.rect.H - 1):
-                self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, i), self.border_color)
-                self.renderer.draw_text("|", Vector2D(self.rect.X, i), self.border_color)
-            self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W, self.rect.Y + self.rect.H - 1), self.border_color)
-            self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.border_color)
-            self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y + self.rect.H - 1), self.border_color)
-            if not self.has_text:
-                self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
-                return
-            self.renderer.draw_text(self.text, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
+        if not self.has_text:
+            self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
+            return
+        self.renderer.draw_text(self.text, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
             return
         if not self.has_text:
             self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
@@ -256,40 +387,107 @@ class TextBox(Drawable):
     def remove_char_at_index(self, text, index):
         return text[:index] + text[index+1:]
 
-    def process(self, key):
-        if key == curses.KEY_BACKSPACE or key == 127:
-            if not self.has_text:
-                return
-            self.text = self.remove_char_at_index(self.text, self.cursor_pos.X - 1)
-            self.cursor_pos.X -= 1
-            if len(self.text) == 0:
-                self.has_text = False
-        elif key == curses.KEY_DC or key == 127:
-            if not self.has_text:
-                return
-            self.text = self.remove_char_at_index(self.text, self.cursor_pos.X)
-            if self.cursor_pos.X > len(self.text):
+    def handle(self, event):
+        if event.type == KEY:
+            key = event.data
+            if key == curses.KEY_BACKSPACE or key == 127:
+                if not self.has_text:
+                    return
+                self.text = self.remove_char_at_index(self.text, self.cursor_pos.X - 1)
                 self.cursor_pos.X -= 1
-            if len(self.text) == 0:
-                self.has_text = False
-        elif 31 < key < 127:
-            if len(self.text) == self.rect.W - 2:
-                return
-            self.text = self.add_char_at_index(self.text, chr(key), self.cursor_pos.X)
-            self.cursor_pos.X += 1
-            self.has_text = True
+                if len(self.text) == 0:
+                    self.has_text = False
+            elif key == curses.KEY_DC or key == 127:
+                if not self.has_text:
+                    return
+                self.text = self.remove_char_at_index(self.text, self.cursor_pos.X)
+                if self.cursor_pos.X > len(self.text):
+                    self.cursor_pos.X -= 1
+                if len(self.text) == 0:
+                    self.has_text = False
+            elif 31 < key < 127:
+                if self.allowed and chr(key) not in self.allowed:
+                    return
+                if len(self.text) == self.rect.W - 2:
+                    return
+                self.text = self.add_char_at_index(self.text, chr(key), self.cursor_pos.X)
+                self.cursor_pos.X += 1
+                self.has_text = True
+        elif event.type == FOCUS:
+            if event.data == True:
+                self.border_color = RED
+            else:
+                self.border_color = WHITE
+        elif event.type == HIDE:
+            if event.type == True:
+                self.is_visible = False
+            else:
+                self.is_visible = True
 
-    def hide(self):
-        self.is_visible = False
+class EditableBuffer(Drawable):
 
-    def show(self):
-        self.is_visible = True
-
-    def focus(self):
-        self.border_color = RED
-
-    def unfocus(self):
+    def __init__(self, ID, dimensions, is_visible, renderer, texture_ID=None)
+        super().__init__(ID, is_visible, renderer)
+        self.rect = dimensions
+        self.texture_manager = renderer.texture_manager
+        self.texture_ID = texture_ID
         self.border_color = WHITE
+        if not texture_ID:
+            self.texture_manager.save_texture(Texture(-99, self.rect.W, self.rect.H, [[]]))
+            self.texture_UD = -99
+
+        elif not self.texture_manager.get_texture(texture_ID):
+            self.texture_manager.save_texture(Texture(texture_ID, self.rect.W, self.rect.H, [[]]))
+
+        else:
+            self.rect.W = self.texture_manager.get_texture(self.texture_ID).size.X
+            self.rect.H = self.texture_manager.get_texture(self.texture_ID).size.Y
+
+    def draw(self):
+        self.renderer.draw(self.texture_ID, Vector2D(self.rect.X, self.rect.Y))
+
+    def draw_border(self):
+        self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y), self.border_color)
+        self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y + self.rect.W - 1), self.border_color)
+        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W - 1, self.rect.Y), self.border_color)
+        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W - 1, self.rect.Y + self.rect.H - 1), self.border_color)
+        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
+        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.border_color)
+        for i in range(self.rect.Y + 1, self.rect.Y + self.rect.H - 1):
+            self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, i), self.border_color)
+            self.renderer.draw_text("|", Vector2D(self.rect.X, i), self.border_color)
+
+    def handle(self, event):
+        if event.type == FOCUS:
+            if event.data == True:
+                self.border_color = RED
+            else:
+                self.border_color = WHITE
+
+class QuitButton(Drawable):
+
+    def __init__(self, ID, is_visible, renderer, pos):
+        super().__init__(ID, is_visible, renderer)
+        self.rect = Rect(pos.X, pos.Y, 6, 3)
+        self.is_quiting = False
+        self.border_color = WHITE
+
+    def draw(self):
+        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
+        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.border_color)
+        self.renderer.draw_text("|", Vector2D(self.rect.X, self.rect.Y + 1), self.border_color)
+        self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, self.rect.Y + 1), self.border_color)
+        self.renderer.draw_text("Quit", Vector2D(self.rect.X + 1, self.rect.Y + 1), WHITE)
+
+    def handle(self, event):
+        if event.type == FOCUS:
+            if event.data == True:
+                self.border_color = RED
+            else:
+                self.border_color = WHITE
+        elif event.type == KEY:
+            if event.data == ord('q') or event.data == 27 or event.data == ord("\n"):
+                self.is_quiting = True
 
 class Animation:
 
@@ -318,7 +516,7 @@ class MenuState:
 
     def init(self):
         self.objects = [
-        Object("avude♠")
+        Object("avude♠", BASE)
         ]
         self.text = ""
         self.FPS = 0
@@ -350,6 +548,10 @@ class MenuState:
         print("a")
 
 class Edit:
+    FILE = 0
+    WIDTH = 1
+    HEIGHT = 2
+    EDITING = 3
 
     def __init__(self, engine, window, texture_manager, clock, renderer):
         self.window = window
@@ -358,80 +560,83 @@ class Edit:
         self.texture_manager = texture_manager
         self.clock = clock
         self.texture = None
-        self.ready = False
-        self.objects = []
-        self.filepath = None
+        self.objects = ObjectContainer()
+        self.stage = self.FILE
 
     def init(self):
-        self.selected = 0
-        self.textbox = TextBox("filepath", "Enter texture file name", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True)
-        self.objects.append(self.textbox)
+        self.objects.add_object(TextBox("filepath", "Enter the texture filepath", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE), True)
+        self.objects.add_object(QuitButton("quit_button", True, self.renderer, Vector2D(168, 0)), True)
+        self.objects.focus_by_id("filepath")
 
     def update(self, delta_time):
         key = self.window.getch()
-        if not self.filepath:
-            if key == ord('q') and self.selected != -1:
-                self.engine.stop()
-                return EDIT
-            if key == 27:
-                self.engine.stop()
-                return EDIT
-            if key == 9:
-                self.select_next()
-                return EDIT
-            if key == 13:
-                self.filepath = self.textbox.text
-                self.load_texture()
-                return EDIT
+        if key == 27:
+            self.engine.stop()
             return EDIT
-        if not self.ready:
-            if len(self.objects) == 1:
-                self.textbox.hide()
-                self.width_box = TextBox("width", "Enter the texture width", Rect(10, 10, 20, 3), self.renderer, True, WHITE, True)
-                self.objects.append(self.width_box)
-                self.height_box = TextBox("heigth", "Enter the texture height", Rect(10, 15, 20, 3), self.renderer, True, WHITE, True)
-                self.objects.append(self.height_box)
-                self.width_box.border_color = RED
+        if key == 9:
+            self.objects.focus_next()
+        if not self.objects.in_focus:
+            return EDIT
+        if self.objects.get_object_by_id("quit_button").is_quiting:
+            self.engine.stop()
+            return EDIT
+
+        if self.stage == self.FILE:
+            if key == ord("\n") and "filepath" in self.objects.in_focus:
+                filepath = self.objects.get_object_by_id("filepath").text
+                if not filepath:
+                    return EDIT
+                self.objects.remove_object_by_id("filepath")
+                if self.load_texture(filepath):
+                    self.stage = self.EDITING
+                    return EDIT
+                self.objects.add_object(TextBox("width", "Enter the texture width", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE, "0123456789"), True)
+                self.objects.focus_by_id("width")
+                self.stage = self.WIDTH
                 return EDIT
-            if key == ord('q') or key == 27:
+
+        elif self.stage == self.WIDTH:
+            if key == ord("\n") and "width" in self.objects.in_focus:
+                text = self.objects.get_object_by_id("width").text
+                if not text:
+                    return EDIT
+                self.texture.size.X = int(text)
+                self.objects.remove_object_by_id("width")
+                self.objects.add_object(TextBox("height", "Enter the texture height", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE, "0123456789"), True)
+                self.objects.focus_by_id("height")
+                self.stage = self.HEIGHT
+                return EDIT
+
+        elif self.stage == self.HEIGHT:
+            if key == ord("\n") and "height" in self.objects.in_focus:
+                text = self.objects.get_object_by_id("height").text
+                if not text:
+                    return EDIT
+                self.texture.size.Y = int(text)
+                self.objects.remove_object_by_id("height")
                 self.engine.stop()
+                self.stage = self.EDITING
                 return EDIT
-            if key == 9:
-                self.select_next()
-                return EDIT
-            if 47 < key < 58 or key == 127 or key == curses.KEY_BACKSPACE or key == curses.KEY_DC:
-                if self.selected != -1:
-                    self.objects[self.selected].process(key)
+
+#        elif self.stage == self.EDITING:
+#            
+
+        self.objects.handle(Event(KEY, key))
         return EDIT
 
     def render(self, interpol_ref):
-        for object in self.objects:
-            object.draw()
+        self.objects.draw()
 
     def finalise(self):
         print("a")
 
-    def load_texture(self):
-        if self.texture_manager.load_texture(-99, self.filepath):
+    def load_texture(self, filepath):
+        if self.texture_manager.load_texture(-99, filepath):
             self.texture = self.texture_manager.get_texture(-99)
-            self.ready = True
+            return True
         else:
             self.texture = Texture(0, 0, [[]])
-
-    def select_next(self):
-        if self.selected >= 0:
-            self.objects[self.selected].unfocus()
-        i = 0
-        while not self.objects[self.selected].is_visible:
-            self.selected += 1
-            i += 1
-            if self.selected > len(self.objects) - 1:
-                self.selected = 0
-            if i == len(self.objects):
-                self.selected = -1
-                return
-        if self.selected >= 0:
-            self.objects[self.selected].focus()
+            return False
 
 class Quit:
 
