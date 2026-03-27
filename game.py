@@ -343,11 +343,13 @@ class TextBox(Drawable):
             self.rect.H = 3
         if border and self.rect.W < 3:
             self.rect.W = 3
-        self.has_border = border
+        self.border = Border(True, self.renderer, self.rect)
+        if not border:
+            self.border.is_visible = False
         if border_color:
-            self.border = Border(
+            self.border.color = border_color
         else:
-            self.border_color = color
+            self.border.color = color
         self.color = color
         self.placeholder = placeholder
         self.renderer = renderer
@@ -360,7 +362,7 @@ class TextBox(Drawable):
     def draw(self):
         if not self.is_visible:
             return
-
+        
         if not self.has_text:
             self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
             return
