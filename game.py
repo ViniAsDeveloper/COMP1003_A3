@@ -76,6 +76,8 @@ class Clock:
             if timer.start_time + timer.time_ns <= current_time:
                 timer.is_over = True
 
+clock = Clock()
+
 class Vector2D:
 
     def __init__(self, X, Y):
@@ -355,20 +357,23 @@ class TextBox(Drawable):
         self.renderer = renderer
         self.text = ""
         self.has_text = False
-        self.cursor_pos = Vector2D(0, 0)
+        self.cursor_pos = Vector2D(0, 1)
         self.is_visible = is_visible
         self.allowed = allowed
+        self.show_cursor = False
+        clock.add_timer("c", 800, True)
 
     def draw(self):
         if not self.is_visible:
             return
 
         self.border.draw()
-
         if not self.has_text:
             self.renderer.draw_text(self.placeholder, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
             return
         self.renderer.draw_text(self.text, Vector2D(self.rect.X + 1, self.rect.Y + 1), self.color)
+        if self.show_cursor:
+            self.draw_cursor()
 
     def add_char(self, char, index=None):
         if index:
@@ -390,13 +395,13 @@ class TextBox(Drawable):
         if event.type == KEY:
             key = event.data
             if key == curses.KEY_BACKSPACE or key == 127:
-                if not self.has_text:
+                if not self.has_text or self.cursor_pos.X < 1:
                     return
                 self.text = self.remove_char_at_index(self.text, self.cursor_pos.X - 1)
                 self.cursor_pos.X -= 1
                 if len(self.text) == 0:
                     self.has_text = False
-            elif key == curses.KEY_DC or key == 127:
+            elif key == curses.KEY_DC:
                 if not self.has_text:
                     return
                 self.text = self.remove_char_at_index(self.text, self.cursor_pos.X)
@@ -407,21 +412,35 @@ class TextBox(Drawable):
             elif 31 < key < 127:
                 if self.allowed and chr(key) not in self.allowed:
                     return
-                if len(self.text) == self.rect.W - 2:
+                if len(self.text) == self.rect.W - 3:
                     return
                 self.text = self.add_char_at_index(self.text, chr(key), self.cursor_pos.X)
                 self.cursor_pos.X += 1
                 self.has_text = True
+            elif key == curses.KEY_LEFT and self.cursor_pos.X > 0:
+                self.cursor_pos.X -= 1
+            elif key == curses.KEY_RIGHT and self.cursor_pos.X < len(self.text):
+                self.cursor_pos.X += 1
         elif event.type == FOCUS:
             if event.data == True:
                 self.border.color = RED
+                self.show_cursor = True
             else:
                 self.border.color = WHITE
+                self.show_cursor = False
         elif event.type == HIDE:
             if event.type == True:
                 self.is_visible = False
             else:
                 self.is_visible = True
+
+    def draw_cursor(self):
+        if self.cursor_pos.X < len(self.text):
+            char = self.text[self.cursor_pos.X]
+            logger.log(char)
+        else:
+            char = ' '
+        self.renderer.window.addch(self.rect.Y + self.cursor_pos.Y, self.rect.X + self.cursor_pos.X + 1, ord(char), curses.A_REVERSE)
 
 class EditableBuffer(Drawable):
 
@@ -457,13 +476,13 @@ class QuitButton(Drawable):
 
     def __init__(self, ID, is_visible, renderer, pos):
         super().__init__(ID, is_visible, renderer)
-        self.rect = Rect(pos.X, pos.Y, 6, 3)
+        self.rect = Rect(pos.X, pos.Y, 5, 3)
         self.is_quiting = False
         self.border_color = WHITE
 
     def draw(self):
-        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
-        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.border_color)
+        self.renderer.draw_text("-" * (self.rect.W - 1), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
+        self.renderer.draw_text("-" * (self.rect.W - 1), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.border_color)
         self.renderer.draw_text("|", Vector2D(self.rect.X, self.rect.Y + 1), self.border_color)
         self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, self.rect.Y + 1), self.border_color)
         self.renderer.draw_text("Quit", Vector2D(self.rect.X + 1, self.rect.Y + 1), WHITE)
@@ -663,6 +682,7 @@ class Engine:
         curses.start_color()
         curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
         self.texture_manager.load_texture("avude", "avude.txt")
+        curses.curs_set(0)
 
     def update(self, delta_time):
         next_state = self.current_state.update(delta_time)
