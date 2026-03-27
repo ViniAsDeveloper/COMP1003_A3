@@ -27,6 +27,7 @@ FRAME_TIME = 33.0
 KEY = 0
 FOCUS = 1
 HIDE = 2
+CUSTOM = 3
 
 class Event:
     def __init__(self, type, data):
@@ -303,11 +304,11 @@ class Renderer:
                 src_rect = Rect(0, 0, texture.size.X, texture.size.Y)
             for i in range(0, src_rect.H):
                 for j in range(0, src_rect.W):
-                    if src_rect.X + j > texture.size.X:
+                    if src_rect.Y + i >= texture.size.Y:
+                        break
+                    if src_rect.X + j >= texture.size.X:
                         break
                     self.window.addch(pos.Y + i, pos.X + j, texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].char, curses.color_pair(texture.pixel_matrix[src_rect.Y + i][src_rect.X + j].color))
-                if src_rect.Y + i > texture.size.Y:
-                    break
 
     def draw_text(self, text, pos, color):
         self.window.addstr(pos.Y, pos.X, text, curses.color_pair(color))
@@ -449,28 +450,60 @@ class EditableBuffer(Drawable):
         self.rect = dimensions
         self.texture_manager = renderer.texture_manager
         self.texture_ID = texture_ID
-        self.border_color = WHITE
+        self.border = Border(True, self.renderer, Rect(self.rect.X - 1, self.rect.Y - 1, self.rect.W + 1, self.rect.H + 1))
         if not texture_ID:
-            self.texture_manager.save_texture(Texture(-99, self.rect.W, self.rect.H, [[]]))
-            self.texture_UD = -99
+            self.texture_manager.save_texture(Texture(-99, self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
+            self.texture_ID = -99
 
         elif not self.texture_manager.get_texture(texture_ID):
-            self.texture_manager.save_texture(Texture(texture_ID, self.rect.W, self.rect.H, [[]]))
-
-        else:
-            self.rect.W = self.texture_manager.get_texture(self.texture_ID).size.X
-            self.rect.H = self.texture_manager.get_texture(self.texture_ID).size.Y
+            self.texture_manager.save_texture(Texture(texture_ID, self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
+        self.src_rect = Rect(0, 0, self.rect.W, self.rect.H)
+        self.cursor = Vector2D(0, 0)
 
     def draw(self):
-        self.renderer
-        self.renderer.draw(self.texture_ID, Vector2D(self.rect.X, self.rect.Y))
+        self.border.draw()
+        self.renderer.draw(self.texture_ID, Vector2D(self.rect.X, self.rect.Y), self.src_rect)
+        logger.log(self.cursor.X - self.src_rect.X)
+        char = self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.X - self.src_rect.X][self.cursor.Y - self.src_rect.Y].char
+        self.renderer.window.addch(self.rect.Y + self.cursor.Y, self.rect.X + self.cursor.X, char, curses.A_REVERSE)
 
     def handle(self, event):
         if event.type == FOCUS:
             if event.data == True:
-                self.border_color = RED
+                self.border.color = RED
             else:
-                self.border_color = WHITE
+                self.border.color = WHITE
+        elif event.type == KEY:
+            if not 31 < event.data < 127:
+                if event.data == curses.KEY_UP:
+                    if self.cursor.Y == 0:
+                        if self.src_rect.Y > -1:
+                            return
+                        self.src_rect.Y += 1
+                        return
+                    self.cursor.Y -= 1
+                elif event.data == curses.KEY_DOWN:
+                    if self.cursor.Y == self.rect.H:
+                        if self.src_rect.Y + self.src_rect.H < self.rect.H + 1:
+                            return
+                        self.src_rect.Y -= 1
+                        return
+                    self.cursor.Y += 1
+                elif event.data == curses.KEY_LEFT:
+                    if self.cursor.X == 0:
+                        if self.src_rect.X > -1:
+                            return
+                        self.src_rect.X += 1
+                        return
+                    self.cursor.X -= 1
+                elif event.data == curses.KEY_RIGHT:
+                    if self.cursor.X == self.rect.W:
+                        if self.src_rect.X + self.src_rect.W < self.rect.W + 1:
+                            return
+                        self.src_rect.X -= 1
+                    self.cursor.X += 1
+            else:
+                self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.X - self.src_rect.X][self.cursor.Y - self.src_rect.Y].char = chr(event.data)
 
 class QuitButton(Drawable):
 
@@ -598,6 +631,7 @@ class Edit:
                     return EDIT
                 self.objects.remove_object_by_id("filepath")
                 if self.load_texture(filepath):
+                    self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 100, 40), True, self.renderer, -99), True)
                     self.stage = self.EDITING
                     return EDIT
                 self.objects.add_object(TextBox("width", "Enter the texture width", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE, "0123456789"), True)
@@ -624,7 +658,7 @@ class Edit:
                     return EDIT
                 self.texture.size.Y = int(text)
                 self.objects.remove_object_by_id("height")
-                self.engine.stop()
+                self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 100, 40), True, self.renderer), True)
                 self.stage = self.EDITING
                 return EDIT
 
@@ -642,10 +676,8 @@ class Edit:
 
     def load_texture(self, filepath):
         if self.texture_manager.load_texture(-99, filepath):
-            self.texture = self.texture_manager.get_texture(-99)
             return True
         else:
-            self.texture = Texture(0, 0, [[]])
             return False
 
 class Quit:
