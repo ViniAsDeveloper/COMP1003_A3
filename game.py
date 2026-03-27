@@ -452,7 +452,7 @@ class EditableBuffer(Drawable):
         self.texture_ID = texture_ID
         self.border = Border(True, self.renderer, Rect(self.rect.X - 1, self.rect.Y - 1, self.rect.W + 1, self.rect.H + 1))
         if not texture_ID:
-            self.texture_manager.save_texture(Texture(-99, self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
+            self.texture_manager.save_texture(-99, Texture(self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
             self.texture_ID = -99
 
         elif not self.texture_manager.get_texture(texture_ID):
@@ -600,7 +600,7 @@ class Edit:
         self.engine = engine
         self.texture_manager = texture_manager
         self.clock = clock
-        self.texture = None
+        self.texture_size = Vector2D(0, 0)
         self.objects = ObjectContainer()
         self.stage = self.FILE
         self.FPS = 0
@@ -644,7 +644,7 @@ class Edit:
                 text = self.objects.get_object_by_id("width").text
                 if not text:
                     return EDIT
-                self.texture.size.X = int(text)
+                self.texture_size.X = int(text)
                 self.objects.remove_object_by_id("width")
                 self.objects.add_object(TextBox("height", "Enter the texture height", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE, "0123456789"), True)
                 self.objects.focus_by_id("height")
@@ -656,9 +656,9 @@ class Edit:
                 text = self.objects.get_object_by_id("height").text
                 if not text:
                     return EDIT
-                self.texture.size.Y = int(text)
+                self.texture_size.Y = int(text)
                 self.objects.remove_object_by_id("height")
-                self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 100, 40), True, self.renderer), True)
+                self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 50, 10), True, self.renderer), True)
                 self.stage = self.EDITING
                 return EDIT
 
