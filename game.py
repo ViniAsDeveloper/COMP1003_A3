@@ -328,13 +328,13 @@ class Border:
         if not self.is_visible:
             return
         self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y), self.color)
-        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.color)
+        self.renderer.draw_text("=" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.color)
         self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W - 1, self.rect.Y), self.color)
         for i in range(self.rect.Y + 1, self.rect.Y + self.rect.H - 1):
-            self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W - 1, i), self.color)
-            self.renderer.draw_text("|", Vector2D(self.rect.X, i), self.color)
+            self.renderer.draw_text("]", Vector2D(self.rect.X + self.rect.W - 1, i), self.color)
+            self.renderer.draw_text("[", Vector2D(self.rect.X, i), self.color)
         self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W - 1, self.rect.Y + self.rect.H - 1), self.color)
-        self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.color)
+        self.renderer.draw_text("=" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.color)
         self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y + self.rect.H - 1), self.color)
 
 class TextBox(Drawable):
@@ -449,15 +449,22 @@ class EditableBuffer(Drawable):
         self.rect = dimensions
         self.texture_manager = renderer.texture_manager
         self.texture_ID = texture_ID
-        self.border = Border(True, self.renderer, Rect(self.rect.X - 1, self.rect.Y - 1, self.rect.W + 2, self.rect.H + 2))
+        self.cursor = Vector2D(0, 0)
         if not texture_ID:
             self.texture_manager.save_texture(-99, Texture(self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
             self.texture_ID = -99
-
+            self.src_rect = Rect(0, 0, self.rect.W, self.rect.H)
         elif not self.texture_manager.get_texture(texture_ID):
             self.texture_manager.save_texture(-99, Texture(self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
-        self.src_rect = Rect(0, 0, self.rect.W, self.rect.H)
-        self.cursor = Vector2D(0, 0)
+            self.src_rect = Rect(0, 0, self.rect.W, self.rect.H)
+        else:
+            size = self.texture_manager.get_texture(texture_ID).size
+            if size.X < self.rect.W:
+                self.rect.W = size.X
+            if size.Y < self.rect.H:
+                self.rect.H = size.Y
+            self.src_rect = Rect(0, 0, self.rect.W, self.rect.H)
+        self.border = Border(True, self.renderer, Rect(self.rect.X - 1, self.rect.Y - 1, self.rect.W + 2, self.rect.H + 2))
 
     def draw(self):
         self.border.draw()
@@ -502,7 +509,7 @@ class EditableBuffer(Drawable):
                         return
                     self.cursor.X += 1
             else:
-                self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.X - self.src_rect.X][self.cursor.Y - self.src_rect.Y].char = chr(event.data)
+                self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.Y - self.src_rect.Y][self.cursor.X - self.src_rect.X].char = chr(event.data)
 
 class QuitButton(Drawable):
 
@@ -631,6 +638,7 @@ class Edit:
                 self.objects.remove_object_by_id("filepath")
                 if self.load_texture(filepath):
                     self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 100, 40), True, self.renderer, -99), True)
+                    self.objects.focus_by_id("buffer")
                     self.stage = self.EDITING
                     return EDIT
                 self.objects.add_object(TextBox("width", "Enter the texture width", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE, "0123456789"), True)
