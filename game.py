@@ -438,7 +438,6 @@ class TextBox(Drawable):
     def draw_cursor(self):
         if self.cursor_pos.X < len(self.text):
             char = self.text[self.cursor_pos.X]
-            logger.log(char)
         else:
             char = ' '
         self.renderer.window.addch(self.rect.Y + self.cursor_pos.Y, self.rect.X + self.cursor_pos.X + 1, ord(char), curses.A_REVERSE)
@@ -463,8 +462,9 @@ class EditableBuffer(Drawable):
     def draw(self):
         self.border.draw()
         self.renderer.draw(self.texture_ID, Vector2D(self.rect.X, self.rect.Y), self.src_rect)
-        logger.log(self.cursor.X - self.src_rect.X)
-        char = self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.X - self.src_rect.X][self.cursor.Y - self.src_rect.Y].char
+#        logger.log(self.cursor.Y - self.src_rect.Y)
+#        logger.log(self.cursor.X)
+        char = self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.Y - self.src_rect.Y][self.cursor.X - self.src_rect.X].char
         self.renderer.window.addch(self.rect.Y + self.cursor.Y, self.rect.X + self.cursor.X, char, curses.A_REVERSE)
 
     def handle(self, event):
@@ -499,8 +499,12 @@ class EditableBuffer(Drawable):
                 elif event.data == curses.KEY_RIGHT:
                     if self.cursor.X == self.rect.W:
                         if self.src_rect.X + self.src_rect.W < self.rect.W + 1:
+                            logger.log("a")
                             return
                         self.src_rect.X -= 1
+                        logger.log("b")
+                        return
+                    logger.log()
                     self.cursor.X += 1
             else:
                 self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.X - self.src_rect.X][self.cursor.Y - self.src_rect.Y].char = chr(event.data)
@@ -658,7 +662,7 @@ class Edit:
                     return EDIT
                 self.texture_size.Y = int(text)
                 self.objects.remove_object_by_id("height")
-                self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 50, 10), True, self.renderer), True)
+                self.objects.add_object(EditableBuffer("buffer", Rect(5, 5, 20, 10), True, self.renderer), True)
                 self.stage = self.EDITING
                 return EDIT
 
