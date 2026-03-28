@@ -329,11 +329,11 @@ class Border:
             return
         self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y), self.color)
         self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y), self.color)
-        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W, self.rect.Y), self.color)
+        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W - 1, self.rect.Y), self.color)
         for i in range(self.rect.Y + 1, self.rect.Y + self.rect.H - 1):
-            self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, i), self.color)
+            self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W - 1, i), self.color)
             self.renderer.draw_text("|", Vector2D(self.rect.X, i), self.color)
-        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W, self.rect.Y + self.rect.H - 1), self.color)
+        self.renderer.draw_text("+", Vector2D(self.rect.X + self.rect.W - 1, self.rect.Y + self.rect.H - 1), self.color)
         self.renderer.draw_text("-" * (self.rect.W - 2), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.color)
         self.renderer.draw_text("+", Vector2D(self.rect.X, self.rect.Y + self.rect.H - 1), self.color)
 
@@ -449,21 +449,19 @@ class EditableBuffer(Drawable):
         self.rect = dimensions
         self.texture_manager = renderer.texture_manager
         self.texture_ID = texture_ID
-        self.border = Border(True, self.renderer, Rect(self.rect.X - 1, self.rect.Y - 1, self.rect.W + 1, self.rect.H + 1))
+        self.border = Border(True, self.renderer, Rect(self.rect.X - 1, self.rect.Y - 1, self.rect.W + 2, self.rect.H + 2))
         if not texture_ID:
             self.texture_manager.save_texture(-99, Texture(self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
             self.texture_ID = -99
 
         elif not self.texture_manager.get_texture(texture_ID):
-            self.texture_manager.save_texture(Texture(texture_ID, self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
+            self.texture_manager.save_texture(-99, Texture(self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
         self.src_rect = Rect(0, 0, self.rect.W, self.rect.H)
         self.cursor = Vector2D(0, 0)
 
     def draw(self):
         self.border.draw()
         self.renderer.draw(self.texture_ID, Vector2D(self.rect.X, self.rect.Y), self.src_rect)
-#        logger.log(self.cursor.Y - self.src_rect.Y)
-#        logger.log(self.cursor.X)
         char = self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.Y - self.src_rect.Y][self.cursor.X - self.src_rect.X].char
         self.renderer.window.addch(self.rect.Y + self.cursor.Y, self.rect.X + self.cursor.X, char, curses.A_REVERSE)
 
@@ -483,7 +481,7 @@ class EditableBuffer(Drawable):
                         return
                     self.cursor.Y -= 1
                 elif event.data == curses.KEY_DOWN:
-                    if self.cursor.Y == self.rect.H:
+                    if self.cursor.Y == self.rect.H - 1:
                         if self.src_rect.Y + self.src_rect.H < self.rect.H + 1:
                             return
                         self.src_rect.Y -= 1
@@ -497,14 +495,11 @@ class EditableBuffer(Drawable):
                         return
                     self.cursor.X -= 1
                 elif event.data == curses.KEY_RIGHT:
-                    if self.cursor.X == self.rect.W:
+                    if self.cursor.X == self.rect.W - 1:
                         if self.src_rect.X + self.src_rect.W < self.rect.W + 1:
-                            logger.log("a")
                             return
                         self.src_rect.X -= 1
-                        logger.log("b")
                         return
-                    logger.log()
                     self.cursor.X += 1
             else:
                 self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.X - self.src_rect.X][self.cursor.Y - self.src_rect.Y].char = chr(event.data)
@@ -662,7 +657,8 @@ class Edit:
                     return EDIT
                 self.texture_size.Y = int(text)
                 self.objects.remove_object_by_id("height")
-                self.objects.add_object(EditableBuffer("buffer", Rect(5, 5, 20, 10), True, self.renderer), True)
+                self.objects.add_object(EditableBuffer("buffer", Rect(5, 5, self.texture_size.X, self.texture_size.Y), True, self.renderer), True)
+                self.objects.focus_by_id("buffer")
                 self.stage = self.EDITING
                 return EDIT
 
