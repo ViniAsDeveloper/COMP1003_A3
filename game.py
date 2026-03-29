@@ -268,28 +268,45 @@ class TextureManager:
             file = open(filepath, "r")
             raw_data = file.read()
             file.close()
-            lines = raw_data.split("\n")
-            rows = int(lines[0])
-            cols = int(lines[1])
-            pixel_matrix = []
-            row = -1
-            col = 0
-            for i in range(2, len(lines) - 1, 2):
-                if i % cols == 2:
-                    pixel_matrix.append([])
-                    row += 1
-                pixel_matrix[row].append(Pixel(lines[i], int(lines[i+1])))
-                col += 1
-            if row == rows - 1 and col == cols:
-                self.texture_map[texture_ID] = Texture(cols, rows, pixel_matrix)
-                return True
-            else:
-                return False
         except:
+            return False
+        lines = raw_data.split("\n")
+        rows = int(lines[0])
+        cols = int(lines[1])
+        pixel_matrix = []
+        row = -1
+        col = 0
+        for i in range(2, len(lines) - 1, 2):
+            if i % cols == 2:
+                pixel_matrix.append([])
+                row += 1
+                col = 0
+            pixel_matrix[row].append(Pixel(lines[i], int(lines[i+1])))
+            col += 1
+        if row == rows - 1 and col == cols:
+            self.texture_map[texture_ID] = Texture(cols, rows, pixel_matrix)
+            return True
+        else:
             return False
 
     def get_texture(self, texture_ID):
         return self.texture_map.get(texture_ID)
+
+    def write_texture(self, texture_ID, filepath):
+        if not self.texture_map.get(texture_ID):
+            return False
+#        try:
+        if True:
+            texture = self.texture_map.get(texture_ID)
+            file = open(filepath, "w");
+            file.write(str(texture.size.Y) + "\n")
+            file.write(str(texture.size.X) + "\n")
+            for i in range(0, texture.size.Y):
+                for j in range(0, texture.size.X):
+                    file.write(str(chr(texture.pixel_matrix[i][j].char)) + "\n")
+                    file.write(str(texture.pixel_matrix[i][j].color) + "\n")
+#        except:
+            return False
 
 class Renderer:
 
@@ -444,12 +461,13 @@ class TextBox(Drawable):
 
 class EditableBuffer(Drawable):
 
-    def __init__(self, ID, dimensions, is_visible, renderer, texture_ID=None):
+    def __init__(self, ID, dimensions, is_visible, renderer, texture_name, texture_ID=None):
         super().__init__(ID, is_visible, renderer)
         self.rect = dimensions
         self.texture_manager = renderer.texture_manager
         self.texture_ID = texture_ID
         self.cursor = Vector2D(0, 0)
+        self.texture_name = texture_name
         if not texture_ID:
             self.texture_manager.save_texture(-99, Texture(self.rect.W, self.rect.H, [[Pixel(' ', WHITE) for i in range(0, self.rect.W)] for i in range(0, self.rect.H)]))
             self.texture_ID = -99
@@ -509,7 +527,10 @@ class EditableBuffer(Drawable):
                         return
                     self.cursor.X += 1
             else:
-                self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.Y - self.src_rect.Y][self.cursor.X - self.src_rect.X].char = chr(event.data)
+                self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.Y - self.src_rect.Y][self.cursor.X - self.src_rect.X].char = event.data
+
+    def save_texture(self, filepath):
+        self.texture_manager.write_texture(self.texture_ID, filepath)
 
 class QuitButton(Drawable):
 
@@ -632,12 +653,12 @@ class Edit:
 
         if self.stage == self.FILE:
             if key == ord("\n") and "filepath" in self.objects.in_focus:
-                filepath = self.objects.get_object_by_id("filepath").text
-                if not filepath:
+                self.filepath = self.objects.get_object_by_id("filepath").text
+                if not self.filepath:
                     return EDIT
                 self.objects.remove_object_by_id("filepath")
-                if self.load_texture(filepath):
-                    self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 100, 40), True, self.renderer, -99), True)
+                if self.load_texture(self.filepath):
+                    self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 100, 40), True, self.renderer, self.filepath, -99), True)
                     self.objects.focus_by_id("buffer")
                     self.stage = self.EDITING
                     return EDIT
@@ -665,13 +686,15 @@ class Edit:
                     return EDIT
                 self.texture_size.Y = int(text)
                 self.objects.remove_object_by_id("height")
-                self.objects.add_object(EditableBuffer("buffer", Rect(5, 5, self.texture_size.X, self.texture_size.Y), True, self.renderer), True)
+                self.objects.add_object(EditableBuffer("buffer", Rect(5, 5, self.texture_size.X, self.texture_size.Y), True, self.renderer, self.filepath), True)
                 self.objects.focus_by_id("buffer")
                 self.stage = self.EDITING
                 return EDIT
 
-#        elif self.stage == self.EDITING:
-#            
+        elif self.stage == self.EDITING:
+            if key == ord("\n") and "buffer" in self.objects.in_focus:
+                self.objects.get_object_by_id("buffer").save_texture(self.filepath)
+                return EDIT
 
         self.objects.handle(Event(KEY, key))
         return EDIT
