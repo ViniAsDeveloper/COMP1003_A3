@@ -497,7 +497,9 @@ class EditableBuffer(Drawable):
             else:
                 self.border.color = WHITE
         elif event.type == KEY:
-            if not 31 < event.data < 127:
+            if event.data == ord("\n"):
+                self.save_texture(self.texture_name)
+            elif not 31 < event.data < 127:
                 if event.data == curses.KEY_UP:
                     if self.cursor.Y == 0:
                         if self.src_rect.Y > -1:
@@ -534,15 +536,14 @@ class EditableBuffer(Drawable):
 
 class Button(Drawable):
 
-    def __init__(self, ID, is_visible, renderer, dimensions, text="", callback, object):
+    def __init__(self, ID, is_visible, renderer, dimensions, text, callback, object):
         super().__init__(ID, is_visible, renderer)
         self.rect = dimensions
-        self.is_quiting = False
         self.border_color = WHITE
         if len(text) > dimensions.W - 2:
             text = text[len(text) - 2:]
         self.text = text
-        self.callback = callbak
+        self.callback = callback
         self.object = object
 
 
@@ -641,7 +642,7 @@ class Edit:
 
     def init(self):
         self.objects.add_object(TextBox("filepath", "Enter the texture filepath", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE), True)
-        self.objects.add_object(Button("quit_button", True, self.renderer, Rect(0, 0, 6, 3), "Quit", [object: object.stop()], self.engine), True)
+        self.objects.add_object(Button("quit_button", True, self.renderer, Rect(0, 0, 6, 3), "Quit", lambda object: object.stop(), self.engine), True)
         self.objects.focus_by_id("filepath")
 
     def update(self, delta_time):
@@ -651,12 +652,9 @@ class Edit:
             return EDIT
         if key == 9:
             self.objects.focus_next()
+            return EDIT
         if not self.objects.in_focus:
             return EDIT
-        if self.objects.get_object_by_id("quit_button").is_quiting:
-            self.engine.stop()
-            return EDIT
-
         if self.stage == self.FILE:
             if key == ord("\n") and "filepath" in self.objects.in_focus:
                 self.filepath = self.objects.get_object_by_id("filepath").text
@@ -672,6 +670,8 @@ class Edit:
                 self.objects.focus_by_id("width")
                 self.stage = self.WIDTH
                 return EDIT
+            else:
+                self.objects.handle(Event(KEY, key))
 
         elif self.stage == self.WIDTH:
             if key == ord("\n") and "width" in self.objects.in_focus:
@@ -684,6 +684,8 @@ class Edit:
                 self.objects.focus_by_id("height")
                 self.stage = self.HEIGHT
                 return EDIT
+            else:
+                self.objects.handle(Event(KEY, key))
 
         elif self.stage == self.HEIGHT:
             if key == ord("\n") and "height" in self.objects.in_focus:
@@ -693,18 +695,14 @@ class Edit:
                 self.texture_size.Y = int(text)
                 self.objects.remove_object_by_id("height")
                 self.objects.add_object(EditableBuffer("buffer", Rect(5, 5, self.texture_size.X, self.texture_size.Y), True, self.renderer, self.filepath), True)
-                self.objects.add_object
                 self.objects.focus_by_id("buffer")
                 self.stage = self.EDITING
                 return EDIT
+            else:
+                self.objects.handle(Event(KEY, key))
 
         elif self.stage == self.EDITING:
-            if key == ord("\n"):
-                if "buffer" in self.objects.in_focus:
-                    self.objects.get_object_by_id("buffer").save_texture(self.filepath)
-                elif
-
-        self.objects.handle(Event(KEY, key))
+            self.objects.handle(Event(KEY, key))
         return EDIT
 
     def render(self, interpol_ref):
