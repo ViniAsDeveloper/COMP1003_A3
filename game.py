@@ -532,20 +532,26 @@ class EditableBuffer(Drawable):
     def save_texture(self, filepath):
         self.texture_manager.write_texture(self.texture_ID, filepath)
 
-class QuitButton(Drawable):
+class Button(Drawable):
 
-    def __init__(self, ID, is_visible, renderer, pos):
+    def __init__(self, ID, is_visible, renderer, dimensions, text="", callback, object):
         super().__init__(ID, is_visible, renderer)
-        self.rect = Rect(pos.X, pos.Y, 5, 3)
+        self.rect = dimensions
         self.is_quiting = False
         self.border_color = WHITE
+        if len(text) > dimensions.W - 2:
+            text = text[len(text) - 2:]
+        self.text = text
+        self.callback = callbak
+        self.object = object
+
 
     def draw(self):
         self.renderer.draw_text("-" * (self.rect.W - 1), Vector2D(self.rect.X + 1, self.rect.Y), self.border_color)
         self.renderer.draw_text("-" * (self.rect.W - 1), Vector2D(self.rect.X + 1, self.rect.Y + self.rect.H - 1), self.border_color)
         self.renderer.draw_text("|", Vector2D(self.rect.X, self.rect.Y + 1), self.border_color)
         self.renderer.draw_text("|", Vector2D(self.rect.X + self.rect.W, self.rect.Y + 1), self.border_color)
-        self.renderer.draw_text("Quit", Vector2D(self.rect.X + 1, self.rect.Y + 1), WHITE)
+        self.renderer.draw_text(self.text, Vector2D(self.rect.X + 1, self.rect.Y + 1), WHITE)
 
     def handle(self, event):
         if event.type == FOCUS:
@@ -554,8 +560,8 @@ class QuitButton(Drawable):
             else:
                 self.border_color = WHITE
         elif event.type == KEY:
-            if event.data == ord('q') or event.data == 27 or event.data == ord("\n"):
-                self.is_quiting = True
+            if event.data == ord("\n"):
+                self.callback(self.object)
 
 class Animation:
 
@@ -635,7 +641,7 @@ class Edit:
 
     def init(self):
         self.objects.add_object(TextBox("filepath", "Enter the texture filepath", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE), True)
-        self.objects.add_object(QuitButton("quit_button", True, self.renderer, Vector2D(0, 0)), True)
+        self.objects.add_object(Button("quit_button", True, self.renderer, Rect(0, 0, 6, 3), "Quit", [object: object.stop()], self.engine), True)
         self.objects.focus_by_id("filepath")
 
     def update(self, delta_time):
@@ -687,14 +693,16 @@ class Edit:
                 self.texture_size.Y = int(text)
                 self.objects.remove_object_by_id("height")
                 self.objects.add_object(EditableBuffer("buffer", Rect(5, 5, self.texture_size.X, self.texture_size.Y), True, self.renderer, self.filepath), True)
+                self.objects.add_object
                 self.objects.focus_by_id("buffer")
                 self.stage = self.EDITING
                 return EDIT
 
         elif self.stage == self.EDITING:
-            if key == ord("\n") and "buffer" in self.objects.in_focus:
-                self.objects.get_object_by_id("buffer").save_texture(self.filepath)
-                return EDIT
+            if key == ord("\n"):
+                if "buffer" in self.objects.in_focus:
+                    self.objects.get_object_by_id("buffer").save_texture(self.filepath)
+                elif
 
         self.objects.handle(Event(KEY, key))
         return EDIT
