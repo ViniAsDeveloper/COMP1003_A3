@@ -34,6 +34,11 @@ class Event:
         self.type = type
         self.data = data
 
+class EventHandler:
+
+    def __init__(self):
+        self.
+
 class Logger:
 
     def __init__(self):
