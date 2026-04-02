@@ -30,14 +30,64 @@ HIDE = 2
 CUSTOM = 3
 
 class Event:
-    def __init__(self, type, data):
+
+    def __init__(self, type, data, target=None):
         self.type = type
         self.data = data
+        self.target = target
+
+class SubscriptionList:
+
+    def __init__(self):
+        self.functions = []
+        self.objects = []
+        self.IDs = []
 
 class EventHandler:
 
     def __init__(self):
-        self.
+        self.subscriptions = [
+        SubscriptionList(),
+        SubscriptionList(),
+        SubscriptionList(),
+        SubscriptionList()
+        ]
+        self.events = []
+
+    def subscribe(self, event_type, handler_fn, object, sub_ID):
+        self.subscriptions[event_type].functions.append(handler_fn)
+        self.subscriptions[event_type].objects.append(object)
+        self.subscriptions[event_type].IDs.append(sub_ID)
+
+    def unsubscribe(sefl, event_type, sub_ID):
+        try:
+            index = self.subscriptions[event_type].IDs.index(sub_ID)
+            del self.subscriptions[event_type].functions[index]
+            del self.subscriptions[event_type].objects[index]
+            del self.subscriptions[event_type].IDs[index]
+        except:
+            return
+
+    def push_event(self, event, immediate=False):
+        if immediate:
+            self.process_event(event)
+        self.events.append(event)
+
+    def process(self):
+        for event in self.events:
+            self.process_event(event)
+        self.events.clear()
+
+    def process_event(self, event):
+        if event.target:
+            index = self.subscriptions[event.type].IDs.index(event.target)
+            self.subscriptions[event.type].functions[index](event, self.subscriptions[event.type].objects[index])
+            return
+        for j in range(len(self.subscriptions[event.type].functions)):
+            if self.subscriptions[event.type].functions[j](event, self.subscriptions[event.type].objects[j]):
+                break
+
+event_handler = EventHandler()
 
 class Logger:
 
@@ -300,8 +350,8 @@ class TextureManager:
     def write_texture(self, texture_ID, filepath):
         if not self.texture_map.get(texture_ID):
             return False
-#        try:
-        if True:
+        try:
+#        if True:
             texture = self.texture_map.get(texture_ID)
             file = open(filepath, "w");
             file.write(str(texture.size.Y) + "\n")
@@ -310,7 +360,7 @@ class TextureManager:
                 for j in range(0, texture.size.X):
                     file.write(str(chr(texture.pixel_matrix[i][j].char)) + "\n")
                     file.write(str(texture.pixel_matrix[i][j].color) + "\n")
-#        except:
+        except:
             return False
 
 class Renderer:
@@ -501,6 +551,8 @@ class EditableBuffer(Drawable):
                 self.border.color = RED
             else:
                 self.border.color = WHITE
+        elif event.type == CUSTOM:
+            self.texture_manager.get_texture(self.texture_ID).pixel_matrix[self.cursor.Y - self.src_rect.Y][self.cursor.X - self.src_rect.X].color = event.data
         elif event.type == KEY:
             if event.data == ord("\n"):
                 self.save_texture(self.texture_name)
@@ -649,65 +701,10 @@ class Edit:
         self.objects.add_object(TextBox("filepath", "Enter the texture filepath", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE), True)
         self.objects.add_object(Button("quit_button", True, self.renderer, Rect(0, 0, 6, 3), "Quit", lambda object: object.stop(), self.engine), True)
         self.objects.focus_by_id("filepath")
+        event_handler.subscribe(KEY, self.handle, self, "edit_state")
 
     def update(self, delta_time):
-        key = self.window.getch()
-        if key == 27:
-            self.engine.stop()
-            return EDIT
-        if key == 9:
-            self.objects.focus_next()
-            return EDIT
-        if not self.objects.in_focus:
-            return EDIT
-        if self.stage == self.FILE:
-            if key == ord("\n") and "filepath" in self.objects.in_focus:
-                self.filepath = self.objects.get_object_by_id("filepath").text
-                if not self.filepath:
-                    return EDIT
-                self.objects.remove_object_by_id("filepath")
-                if self.load_texture(self.filepath):
-                    self.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 100, 40), True, self.renderer, self.filepath, -99), True)
-                    self.objects.focus_by_id("buffer")
-                    self.stage = self.EDITING
-                    return EDIT
-                self.objects.add_object(TextBox("width", "Enter the texture width", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE, "0123456789"), True)
-                self.objects.focus_by_id("width")
-                self.stage = self.WIDTH
-                return EDIT
-            else:
-                self.objects.handle(Event(KEY, key))
 
-        elif self.stage == self.WIDTH:
-            if key == ord("\n") and "width" in self.objects.in_focus:
-                text = self.objects.get_object_by_id("width").text
-                if not text:
-                    return EDIT
-                self.texture_size.X = int(text)
-                self.objects.remove_object_by_id("width")
-                self.objects.add_object(TextBox("height", "Enter the texture height", Rect(10, 10, 50, 3), self.renderer, True, WHITE, True, WHITE, "0123456789"), True)
-                self.objects.focus_by_id("height")
-                self.stage = self.HEIGHT
-                return EDIT
-            else:
-                self.objects.handle(Event(KEY, key))
-
-        elif self.stage == self.HEIGHT:
-            if key == ord("\n") and "height" in self.objects.in_focus:
-                text = self.objects.get_object_by_id("height").text
-                if not text:
-                    return EDIT
-                self.texture_size.Y = int(text)
-                self.objects.remove_object_by_id("height")
-                self.objects.add_object(EditableBuffer("buffer", Rect(5, 5, self.texture_size.X, self.texture_size.Y), True, self.renderer, self.filepath), True)
-                self.objects.focus_by_id("buffer")
-                self.stage = self.EDITING
-                return EDIT
-            else:
-                self.objects.handle(Event(KEY, key))
-
-        elif self.stage == self.EDITING:
-            self.objects.handle(Event(KEY, key))
         return EDIT
 
     def render(self, interpol_ref):
@@ -721,6 +718,61 @@ class Edit:
             return True
         else:
             return False
+
+    def handle(self, event, me):
+        if event.type == KEY:
+            key = event.data
+        if key == 9:
+            me.objects.focus_next()
+        if me.stage == me.FILE:
+            if key == ord("\n") and "filepath" in me.objects.in_focus:
+                me.filepath = me.objects.get_object_by_id("filepath").text
+                if not me.filepath:
+                    return EDIT
+                me.objects.remove_object_by_id("filepath")
+                if me.load_texture(me.filepath):
+                    me.objects.add_object(EditableBuffer("buffer", Rect(10, 10, 100, 40), True, me.renderer, me.filepath, -99), True)
+                    me.objects.add_object(Button("color_red", True, self.renderer, Rect(0, 5, 7, 3), "RED", lambda objects: (objects[0].handle(Event(CUSTOM, RED)) and objects[1].focus_by_id("buffer")), [self.objects.get_object_by_id("buffer"), self.objects]), True)
+                    me.objects.focus_by_id("buffer")
+                    me.stage = me.EDITING
+                    return EDIT
+                me.objects.add_object(TextBox("width", "Enter the texture width", Rect(10, 10, 50, 3), me.renderer, True, WHITE, True, WHITE, "0123456789"), True)
+                me.objects.focus_by_id("width")
+                me.stage = me.WIDTH
+                return EDIT
+            else:
+                me.objects.handle(Event(KEY, key))
+
+        elif me.stage == me.WIDTH:
+            if key == ord("\n") and "width" in me.objects.in_focus:
+                text = me.objects.get_object_by_id("width").text
+                if not text:
+                    return EDIT
+                me.texture_size.X = int(text)
+                me.objects.remove_object_by_id("width")
+                me.objects.add_object(TextBox("height", "Enter the texture height", Rect(10, 10, 50, 3), me.renderer, True, WHITE, True, WHITE, "0123456789"), True)
+                me.objects.focus_by_id("height")
+                me.stage = me.HEIGHT
+                return EDIT
+            else:
+                me.objects.handle(Event(KEY, key))
+
+        elif me.stage == me.HEIGHT:
+            if key == ord("\n") and "height" in me.objects.in_focus:
+                text = me.objects.get_object_by_id("height").text
+                if not text:
+                    return EDIT
+                me.texture_size.Y = int(text)
+                me.objects.remove_object_by_id("height")
+                me.objects.add_object(EditableBuffer("buffer", Rect(10, 5, me.texture_size.X, me.texture_size.Y), True, me.renderer, me.filepath), True)
+                me.objects.focus_by_id("buffer")
+                me.stage = me.EDITING
+                return EDIT
+            else:
+                me.objects.handle(Event(KEY, key))
+
+        elif me.stage == me.EDITING:
+            me.objects.handle(Event(KEY, key))
 
 class Quit:
 
@@ -742,7 +794,7 @@ class Quit:
 states = [ MenuState, Quit, Edit ]
 
 class Engine:
-    current_state_code = MENU
+    current_state_code = EDIT
     is_running = True
     time = 0
     texture_manager = TextureManager()
@@ -759,6 +811,10 @@ class Engine:
         curses.curs_set(0)
 
     def update(self, delta_time):
+        key = self.window.getch()
+        if key:
+            event_handler.push_event(Event(KEY, key))
+        event_handler.process()
         next_state = self.current_state.update(delta_time)
         if next_state != self.current_state_code:
             self.change_state(next_state)
