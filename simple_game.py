@@ -1,11 +1,12 @@
 import random
+from collections import Counter
 
 # aliases for suit numbers to make code more readable
 # staring at 0 to use and array index if needed
 DIAMONDS = 0
 CLUBS = 1
 HEARTS = 2
-SPADES = 4
+SPADES = 3
 
 # icons to display
 suit_icons = ["♦","♣","♥","♠"]
@@ -25,17 +26,16 @@ value_icons = ["", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", 
 # staring at 0 to use and array index if needed
 POKER = 0
 
-NOTHING = 0
-HIGH_CARD = 1
-ONE_PAIR = 2
-TWO_PAIR = 3
-THREE_OF_A_KIND = 4
-STRAIGHT = 5
-FLUSH = 6
-FULL_HOUSE = 7
-FOUR_OF_A_KIND = 8
-STRAIGHT_FLUSH = 9
-ROYAL_FLUSH = 10
+HIGH_CARD = 0
+ONE_PAIR = 1
+TWO_PAIRS = 2
+THREE_OF_A_KIND = 3
+STRAIGHT = 4
+FLUSH = 5
+FULL_HOUSE = 6
+FOUR_OF_A_KIND = 7
+STRAIGHT_FLUSH = 8
+ROYAL_FLUSH = 9
 
 class Pair:
 
@@ -53,7 +53,7 @@ class Pair:
 
 class TheeOfAKind:
 
-    def __init__(self, self, card1, card2, card3):
+    def __init__(self, card1, card2, card3):
         if card1.value != card2.value or card2.value != card3.value:
             raise Exception("three of a kind must be made out of three card with the same value")
         self.card1 = card1
@@ -71,7 +71,15 @@ class FourOfAKind:
     def init(self, card1, card2, card3, card4):
         if card1.value != card2.value or card2.value != card3.value or card3.value != card4.value:
             raise Exception("four of a kind must be made out of four card with the same value")
-        
+        self.card1 = card1
+        seld.card2 = card2
+        self.card3 = card3
+        self.card4 = card4
+
+    def get_value(self):
+        return self.card1.value
+
+class
 
 class Card:
     suit = 0
@@ -87,8 +95,8 @@ class Card:
     def __eq__(self, other):
         return self.suit == other.suit and self.value == self.value
 
-    def display(self):
-        print(f"[{value_icons[self.value - 1]:>2}|{suit_icons[self.suit]}]")
+    def __repr__(self):
+        return f"[{value_icons[self.value - 1]:>2}|{suit_icons[self.suit]}]"
 
 class CardContainer:
 
@@ -123,34 +131,31 @@ class Hand(CardContainer):
             raise Exception("A hand needs exactly 5 cards to be valid")
             return
         self.cards = cards
-        self.high_card = False
-        self.pair_1 = False
-        self.pair_2 = False
-        self.three = False
-        self.four = False
-        self.flush = False
-        self.straight = False
-        self.full_house = False
-        self.straight_flush = False
-        self.royal_flush = False
+        self.hand_data = None
         self.hand_type = self.analyse_hand()
 
     def analyse_hand(self):
         sorted_cards = sorted(self.cards, key=lambda card: card.value)
+        print(sorted_cards)
         suits = [card.suit for card in sorted_cards]
         values = [card.value for card in sorted_cards]
+        print(suits)
+        print(values)
 
         different_suits = Counter(suits)
+        print(different_suits)
 
         is_flush = len(different_suits) == 1
 
-        is_straigth = True
-        for i in range(0, 5):
+        is_straight = True
+        for i in range(0, 4):
             if values[i] + 1 != values[i+1]:
                 is_straight = False
-        if values = [14, 2, 3, 4, 5]:
+
+        if values == [14, 2, 3, 4, 5]:
             is_straight = True
-        if is_straight and is_flush and values = [10, 11, 12, 13, 14]:
+
+        if is_straight and is_flush and values == [10, 11, 12, 13, 14]:
             self.royal_flush = different_suits[0]
             return ROYAL_FLUSH
 
@@ -163,8 +168,9 @@ class Hand(CardContainer):
 
         has_three_of_a_kind = False
         for i in range(0, 5):
+            print(values.count(values[i]))
             if values.count(values[i]) == 3:
-                has_three_equals = True
+                has_three_of_a_kind = True
 
         pairs = []
         for i in range(0, 5):
@@ -172,7 +178,7 @@ class Hand(CardContainer):
                 if not values[i] in pairs:
                     pairs.append(values[i])
 
-        if has_three_equals and len(pairs) == 1:
+        if has_three_of_a_kind and len(pairs) == 1:
             return FULL_HOUSE
 
         if is_flush:
@@ -188,8 +194,9 @@ class Hand(CardContainer):
             return TWO_PAIRS
 
         if len(pairs) == 1:
-            return PAIR
+            return ONE_PAIR
 
+        self.hand_data = Card(suits[4], values[4])
         return HIGH_CARD
 
     def swap_card(self, old_card, new_card):
@@ -204,17 +211,25 @@ class Hand(CardContainer):
             return
         self.cards.remove(old_card)
         self.cards.append(new_card)
+        self.analyse_hand()
 
     def __repr__(self):
-        output = "+================== HAND ==================+\n|  "
+        output =     "+================== HAND ==================+\n|  "
         for card in self.cards:
             output += f"[{value_icons[card.value - 1]:>2}|{suit_icons[card.suit]}]  "
         output += "|\n+==========================================+"
         return output
 
 card = Card(3, 14)
-card.display()
+print(card)
 
-hand = Hand([Card(3, 14), Card(0, 10), Card(1, 2), Card(2, 14), Card(0, 14)])
-hand.swap_card(Card(0, 10), Card(1, 14))
+cards = []
+for i in range(0, 5):
+    value = int(input("Enter the card value:\n_> "))
+    suit = int(input("Enter the card suit:\n_> "))
+    cards.append(Card(suit, value))
+
+hand = Hand(cards)
 print(hand)
+print(hand.hand_type)
+print(hand.hand_data)
