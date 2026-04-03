@@ -37,50 +37,6 @@ FOUR_OF_A_KIND = 7
 STRAIGHT_FLUSH = 8
 ROYAL_FLUSH = 9
 
-class Pair:
-
-    def __init__(self, card1, card2):
-        if card1.value != card2.value:
-            raise Exception("pairs must have two cards with the same VALUE")
-        self.card1 = card1
-        self.card2 = card2
-
-    def get_value(self):
-        return self.card1.value
-
-    def get_suits(self):
-        return (self.card1.suit, self.card2.suit)
-
-class TheeOfAKind:
-
-    def __init__(self, card1, card2, card3):
-        if card1.value != card2.value or card2.value != card3.value:
-            raise Exception("three of a kind must be made out of three card with the same value")
-        self.card1 = card1
-        self.card2 = card2
-        self.card3 = card3
-
-    def get_value(self):
-        return self.card1.value
-
-    def get_suits(self):
-        return (self.card1.suit, self.card2.suit, self.card3.suit)
-
-class FourOfAKind:
-
-    def init(self, card1, card2, card3, card4):
-        if card1.value != card2.value or card2.value != card3.value or card3.value != card4.value:
-            raise Exception("four of a kind must be made out of four card with the same value")
-        self.card1 = card1
-        seld.card2 = card2
-        self.card3 = card3
-        self.card4 = card4
-
-    def get_value(self):
-        return self.card1.value
-
-class
-
 class Card:
     suit = 0
     value = 14
@@ -97,6 +53,78 @@ class Card:
 
     def __repr__(self):
         return f"[{value_icons[self.value - 1]:>2}|{suit_icons[self.suit]}]"
+
+class OnePair:
+
+    def __init__(self, card1, card2):
+        self.card1 = card1
+        self.card2 = card2
+
+    def get_value(self):
+        return self.card1.value
+
+    def get_suits(self):
+        return (self.card1.suit, self.card2.suit)
+
+class TwoPairs:
+
+    def __init__(self, card1, card2, card3, card4):
+        self.pair1 = Pair(card1, card2)
+        self.pair2 = Pair(card3, card4)
+
+    def get_values(self):
+        return (self.pair1.card1.value, self.pair2.card1.value)
+
+    def get_suits(self):
+        return (self.pair1.card1.suit, self.pair1.card2.suit, self.pair2.card1.suit, self.pair2.card2.suit)
+
+class TheeOfAKind:
+
+    def __init__(self, card1, card2, card3):
+        self.card1 = card1
+        self.card2 = card2
+        self.card3 = card3
+
+    def get_value(self):
+        return self.card1.value
+
+    def get_suits(self):
+        return (self.card1.suit, self.card2.suit, self.card3.suit)
+
+class FourOfAKind:
+
+    def __init__(self, card1, card2, card3, card4):
+        self.card1 = card1
+        seld.card2 = card2
+        self.card3 = card3
+        self.card4 = card4
+
+    def get_value(self):
+        return self.card1.value
+
+class Straight:
+
+    def __init__(self, cards):
+        if len(cards) != 5:
+            raise Exception("straight must be made out of five sequential cards")
+        self.card1 = cards[0]
+        self.card2 = cards[1]
+        self.card3 = cards[2]
+        self.card4 = cards[3]
+        self.card5 = cards[4]
+
+    def get_value(self):
+        return self.card1.value
+
+    def get_suits(self):
+        return (self.card1.suit, self.card2.suit, self.card3.suit, self.card4.suit, self.card5.suit)
+
+class Flush:
+
+    def __init__(self, cards):
+        if len(cards) != 5 or not (cards[0] == cards[1] == cards[2] == cards[3] == cards[4]):
+            raise Exception("flush must be made out of five cards of same suit")
+        self.cards
 
 class CardContainer:
 
