@@ -61,6 +61,8 @@ class Card:
 class OnePair:
 
     def __init__(self, card1, card2):
+        if card1.value != card2.value:
+            raise Exception("A pair must be made of 2 cards whith the same value")
         self.card1 = card1
         self.card2 = card2
 
@@ -75,14 +77,15 @@ class OnePair:
 class TwoPairs:
 
     def __init__(self, card1, card2, card3, card4):
-        self.pair1 = Pair(card1, card2)
-        self.pair2 = Pair(card3, card4)
+        if card1.value < card3.value:
+            self.pair1 = OnePair(card1, card2)
+            self.pair2 = OnePair(card3, card4)
+        else:
+            self.pair2 = OnePair(card1, card2)
+            self.pair1 = OnePair(card3, card4)
 
-    def get_values(self):
-        return (self.pair1.card1.value, self.pair2.card1.value)
-
-    def get_suits(self):
-        return (self.pair1.card1.suit, self.pair1.card2.suit, self.pair2.card1.suit, self.pair2.card2.suit)
+    def compare(self, other):
+        
 
 class TheeOfAKind:
 
