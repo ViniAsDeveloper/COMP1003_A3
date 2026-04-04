@@ -45,11 +45,11 @@ class Card:
             raise Exception("suit must be one of the numbers: 0 - Hearts; 1 - Spades; 2 - Clubs; 3 - Diamonds;")
         self.suit = suit
         if not 2 <= value <= 14:
-            raise Exception("value must be one a number between 1 and 13 (including 1 and 13)")
+            raise Exception("value must be one a number between 2 and 14 (including 2 and 14)")
         self.value = value
 
     def __eq__(self, other):
-        return self.suit == other.suit and self.value == self.value
+        return self.suit == other.suit and self.value == other.value
 
     def __repr__(self):
         return f"[{value_icons[self.value - 1]:>2}|{suit_icons[self.suit]}]"
@@ -60,11 +60,9 @@ class OnePair:
         self.card1 = card1
         self.card2 = card2
 
-    def get_value(self):
-        return self.card1.value
 
-    def get_suits(self):
-        return (self.card1.suit, self.card2.suit)
+    def compare(self, other):
+        
 
 class TwoPairs:
 
@@ -131,6 +129,10 @@ class CardContainer:
     def __init__(self):
         self.cards = []
 
+    def add_card(self, card):
+        if card not in self.cards:
+            self.cards.append(card)
+
     def remove_card_by_index(self, index):
         if not 0 <= index < len(self.cards):
             return
@@ -145,9 +147,10 @@ class CardContainer:
 class Deck(CardContainer):
 
     def __init__(self):
+        super().__init__()
         for suit in range(0, 4):
             for value in range(1, 14):
-                self.cards.append(Card(suit, value))
+                super().add_card(Card(suit, value))
 
     def shuffle(self):
         shuffle(self.cards)
@@ -155,10 +158,15 @@ class Deck(CardContainer):
 class Hand(CardContainer):
 
     def __init__(self, cards=[]):
+        super().__init__()
         if len(cards) != 5:
             raise Exception("A hand needs exactly 5 cards to be valid")
             return
-        self.cards = cards
+        for card in cards:
+            super().add_card(card)
+        if len(self.cards) != 5:
+            raise Exception("A hand needs exactly 5 distintic cards to be valid")
+            return
         self.hand_data = None
         self.hand_type = self.analyse_hand()
 
@@ -251,13 +259,18 @@ class Hand(CardContainer):
 card = Card(3, 14)
 print(card)
 
-cards = []
-for i in range(0, 5):
-    value = int(input("Enter the card value:\n_> "))
-    suit = int(input("Enter the card suit:\n_> "))
-    cards.append(Card(suit, value))
+try:
+    cards = []
+    for i in range(0, 5):
+        value = int(input("Enter the card value:\n_> "))
+        suit = int(input("Enter the card suit:\n_> "))
+        cards.append(Card(suit, value))
 
-hand = Hand(cards)
+    hand = Hand(cards)
+except Exception as e:
+    print("**** ERROR ****\n", e, sep="")
+    quit()
+
 print(hand)
 print(hand.hand_type)
 print(hand.hand_data)
