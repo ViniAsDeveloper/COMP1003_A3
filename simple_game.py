@@ -37,6 +37,10 @@ FOUR_OF_A_KIND = 7
 STRAIGHT_FLUSH = 8
 ROYAL_FLUSH = 9
 
+WIN = 0
+LOSE = 1
+TIE = 2
+
 class Card:
     suit = 0
     value = 14
@@ -60,9 +64,13 @@ class OnePair:
         self.card1 = card1
         self.card2 = card2
 
-
     def compare(self, other):
-        
+        if self.card1.value > other.card1.value:
+            return WIN
+        if self.card1.value < other.card1.value:
+            return LOSE
+        else:
+            return TIE
 
 class TwoPairs:
 
