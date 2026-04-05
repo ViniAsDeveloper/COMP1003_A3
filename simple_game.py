@@ -85,31 +85,45 @@ class TwoPairs:
             self.pair1 = OnePair(card3, card4)
 
     def compare(self, other):
-        
+        if self.pair2.card1.value > other.pair2.card1.value:
+            return WIN
+        elif self.pair2.card1.value < other.pair2.card1.value:
+            return LOSE
+        elif self.pair1.card1.value > other.pair1.card1.value:
+            return WIN
+        elif self.pair1.card1.value < other.pair1.card1.value:
+            return LOSE
+        else:
+            return TIE
 
 class TheeOfAKind:
 
     def __init__(self, card1, card2, card3):
+        if card1.value != card2.value or card2.value != card3.value:
+            raise Exception("three of a kind must have three cards with the same value")
         self.card1 = card1
         self.card2 = card2
         self.card3 = card3
 
-    def get_value(self):
-        return self.card1.value
-
-    def get_suits(self):
-        return (self.card1.suit, self.card2.suit, self.card3.suit)
+    def compare(self, other):
+        if self.card1.value > other.card1.value:
+            return WIN
+        return LOSE
 
 class FourOfAKind:
 
     def __init__(self, card1, card2, card3, card4):
+        if card1.value != card2.value or card2.value != card3.value or card4.value:
+            raise("four or a kind must have four cards with the same value")
         self.card1 = card1
         seld.card2 = card2
         self.card3 = card3
         self.card4 = card4
 
-    def get_value(self):
-        return self.card1.value
+    def compare(self, other):
+        if self.card1.value > other.card1.value:
+            return WIN
+        return LOSE
 
 class Straight:
 
