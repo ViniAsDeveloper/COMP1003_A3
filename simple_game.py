@@ -130,17 +130,24 @@ class Straight:
     def __init__(self, cards):
         if len(cards) != 5:
             raise Exception("straight must be made out of five sequential cards")
+        cards = sorted(self.cards, key=lambda card: card.value)
+        is_valid = True
+        for i in range(0, 5):
+            if cards[i] + 1 != cards[i + 1]:
+                is_valid = False
+        values = [card.value for card in cards]
+        if values == [14, 2, 3, 4, 5]:
+            is_valid = True
+        if not is_valid:
+            raise Exception("straight must be made out of five sequential cards")
         self.card1 = cards[0]
         self.card2 = cards[1]
         self.card3 = cards[2]
         self.card4 = cards[3]
         self.card5 = cards[4]
 
-    def get_value(self):
-        return self.card1.value
-
-    def get_suits(self):
-        return (self.card1.suit, self.card2.suit, self.card3.suit, self.card4.suit, self.card5.suit)
+#    def compare(self, other):
+#        if self.card1.value 
 
 class Flush:
 
@@ -197,14 +204,11 @@ class Hand(CardContainer):
 
     def analyse_hand(self):
         sorted_cards = sorted(self.cards, key=lambda card: card.value)
-        print(sorted_cards)
+        self.cards = sorted_cards
         suits = [card.suit for card in sorted_cards]
         values = [card.value for card in sorted_cards]
-        print(suits)
-        print(values)
-
         different_suits = Counter(suits)
-        print(different_suits)
+
 
         is_flush = len(different_suits) == 1
 
@@ -213,7 +217,7 @@ class Hand(CardContainer):
             if values[i] + 1 != values[i+1]:
                 is_straight = False
 
-        if values == [14, 2, 3, 4, 5]:
+        if values == [2, 3, 4, 5, 14]:
             is_straight = True
 
         if is_straight and is_flush and values == [10, 11, 12, 13, 14]:
