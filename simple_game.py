@@ -58,70 +58,79 @@ class Card:
     def __repr__(self):
         return f"[{value_icons[self.value - 1]:>2}|{suit_icons[self.suit]}]"
 
-class OnePair:
+class HighCard:
 
-    def __init__(self, card1, card2):
-        if card1.value != card2.value:
-            raise Exception("A pair must be made of 2 cards whith the same value")
-        self.card1 = card1
-        self.card2 = card2
+    def __init__(self, cards):
+        if len(cards) != 1:
+            raise Exception("the high card must be a single card")
+        self.cards = (cards[0], ) # using tuples prevents accidental modifications to the card values
 
     def compare(self, other):
-        if self.card1.value > other.card1.value:
+        if self.cards[0].value > other.cards[0].value:
             return WIN
-        if self.card1.value < other.card1.value:
+        elif self.card[0].value < other.cards[0].value:
+            return LOSE
+        else:
+            return TIE
+
+class OnePair:
+
+    def __init__(self, cards):
+        if len(cards) != 2 or cards[0].value != cards[1].value:
+            raise Exception("A pair must be made of 2 cards whith the same value")
+        self.cards = (cards[0], cards[1])
+
+    def compare(self, other):
+        if self.cards[0].value > other.cards[0].value:
+            return WIN
+        if self.cards[0].value < other.cards[0].value:
             return LOSE
         else:
             return TIE
 
 class TwoPairs:
 
-    def __init__(self, card1, card2, card3, card4):
-        if card1.value < card3.value:
-            self.pair1 = OnePair(card1, card2)
-            self.pair2 = OnePair(card3, card4)
+    def __init__(self, cards):
+        if cards[0].value < cards[2].value:
+            self.pair1 = OnePair([cards[2], cards[3]])
+            self.pair2 = OnePair([cards[0], cards[1]])
         else:
-            self.pair2 = OnePair(card1, card2)
-            self.pair1 = OnePair(card3, card4)
+            self.pair2 = OnePair([cards[0], cards[1]])
+            self.pair1 = OnePair([cards[2], cards[3]])
 
     def compare(self, other):
-        if self.pair2.card1.value > other.pair2.card1.value:
+        if self.pair2.cards[0].value > other.pair2.cards[0].value:
             return WIN
-        elif self.pair2.card1.value < other.pair2.card1.value:
+        elif self.pair2.cards[0].value < other.pair2.cards[0].value:
             return LOSE
-        elif self.pair1.card1.value > other.pair1.card1.value:
+        elif self.pair1.cards[0].value > other.pair1.cards[0].value:
             return WIN
-        elif self.pair1.card1.value < other.pair1.card1.value:
+        elif self.pair1.cards[0].value < other.pair1.cards[0].value:
             return LOSE
         else:
             return TIE
 
-class TheeOfAKind:
+class ThreeOfAKind:
 
-    def __init__(self, card1, card2, card3):
-        if card1.value != card2.value or card2.value != card3.value:
+    def __init__(self, cards):
+        if len(cards) != 3 or cards[0].value != cards[1].value or cards[1].value != cards[2].value:
             raise Exception("three of a kind must have three cards with the same value")
-        self.card1 = card1
-        self.card2 = card2
-        self.card3 = card3
+        self.cards = (cards[0], cards[1], cards[2])
 
     def compare(self, other):
-        if self.card1.value > other.card1.value:
+        if self.cards[0].value > other.cards[0].value:
             return WIN
         return LOSE
 
 class FourOfAKind:
 
-    def __init__(self, card1, card2, card3, card4):
-        if card1.value != card2.value or card2.value != card3.value or card4.value:
+    def __init__(self, cards):
+        if len(cards) != 4 or cards[0].value != cards[1].value or cards[1].value != cards[2].value or cards[2].value != cards[3].value:
             raise("four or a kind must have four cards with the same value")
-        self.card1 = card1
-        seld.card2 = card2
-        self.card3 = card3
-        self.card4 = card4
+        self.cards = (cards[0], cards[1], cards[2], cards[3])
 
     def compare(self, other):
-        if self.card1.value > other.card1.value:
+        if self.cards[0].value > other.cards[0].value:
             return WIN
         return LOSE
 
@@ -130,31 +139,84 @@ class Straight:
     def __init__(self, cards):
         if len(cards) != 5:
             raise Exception("straight must be made out of five sequential cards")
-        cards = sorted(self.cards, key=lambda card: card.value)
+        cards = sorted(cards, key=lambda card: card.value)
         is_valid = True
-        for i in range(0, 5):
-            if cards[i] + 1 != cards[i + 1]:
+        for i in range(0, 4):
+            if cards[i].value + 1 != cards[i + 1].value:
                 is_valid = False
         values = [card.value for card in cards]
-        if values == [14, 2, 3, 4, 5]:
+        if values == [2, 3, 4, 5, 14]:
             is_valid = True
         if not is_valid:
             raise Exception("straight must be made out of five sequential cards")
-        self.card1 = cards[0]
-        self.card2 = cards[1]
-        self.card3 = cards[2]
-        self.card4 = cards[3]
-        self.card5 = cards[4]
+        self.cards = (cards[0], cards[1], cards[2], cards[3], cards[4])
 
-#    def compare(self, other):
-#        if self.card1.value 
+    def compare(self, other):
+        if self.cards[0].value > other.cards[0].value:
+            return WIN
+        elif self.cards[0].value < other.cards[0].value:
+            return LOSE
+        else:
+            return TIE
 
 class Flush:
 
     def __init__(self, cards):
-        if len(cards) != 5 or not (cards[0] == cards[1] == cards[2] == cards[3] == cards[4]):
+        if len(cards) != 5 or not (cards[0].suit == cards[1].suit == cards[2].suit == cards[3].suit == cards[4].suit):
             raise Exception("flush must be made out of five cards of same suit")
-        self.cards
+        cards = sorted(cards, key=lambda card: card.value)
+
+        self.cards = (cards[0], cards[1], cards[2], cards[3], cards[4])
+
+    def compare(self, other):
+        for i in range(4, -1, -1):
+            if self.cards[i].value > other.cards[i].value:
+                return WIN
+            elif self.cards[i].value < other.cards[i].value:
+                return LOSE
+        return TIE
+
+class FullHouse:
+
+    def __init__(self, cards):
+        if len(cards) != 5:
+            raise Exception("a full house must be made of 5 cards (three of a kind + a pair)")
+        cards = sorted(cards, key=lambda card: card.value)
+        if cards[0].value == cards[1].value and cards[1].value == cards[2].value and cards[3].value == cards[4].value:
+            self.three = ThreeOfAKind([cards[0], cards[1], cards[2]])
+            self.pair = OnePair([cards[3], cards[4]])
+        elif cards[0].value == cards[1].value and cards[2].value == cards[3].value and cards[3].value == cards[4].value:
+            self.pair = OnePair([cards[0], cards[1]])
+            self.three = ThreeOfAKind([cards[2], cards[3], cards[4]])
+        else:
+            raise Exception("a full house must be made of 5 cards (three of a kind + a pair)")
+
+    def compare(self, other):
+        result = self.three.compare(other.three)
+        if result == TIE:
+            result == self.pair.compare(other.pair)
+
+        return result
+
+class StraightFlush(Straight):
+
+    def __init__(self, cards):
+        if len(cards) != 5:
+            raise Exception("a straight flush must be made of 5 sequential cards of the same suit")
+        super().__init__(cards)
+        if not (cards[0].suit == cards[1].suit == cards[2].suit == cards[3].suit == cards[4].suit):
+            raise Exception("a straight flush must be made of 5 sequential cards of the same suit")
+
+    def compare(self, other):
+        return super().compare(other)
+
+class RoyalFlush:
+
+    def __init__(self, cards):
+        pass
+
+    def compare(self):
+        return TIE
 
 class CardContainer:
 
@@ -187,6 +249,13 @@ class Deck(CardContainer):
     def shuffle(self):
         shuffle(self.cards)
 
+class Types:
+
+    def __init__(self):
+        types = [
+        
+        ]
+
 class Hand(CardContainer):
 
     def __init__(self, cards=[]):
@@ -199,7 +268,6 @@ class Hand(CardContainer):
         if len(self.cards) != 5:
             raise Exception("A hand needs exactly 5 distintic cards to be valid")
             return
-        self.hand_data = None
         self.hand_type = self.analyse_hand()
 
     def analyse_hand(self):
@@ -222,20 +290,25 @@ class Hand(CardContainer):
 
         if is_straight and is_flush and values == [10, 11, 12, 13, 14]:
             self.royal_flush = different_suits[0]
+            self.combination = RoyalFlush(sorted_cards)
             return ROYAL_FLUSH
 
         if is_straight and is_flush:
+            self.combination = StraightFlush(sorted_cards)
             return STRAIGHT_FLUSH
 
         for i in range(0, 5):
             if values.count(values[i]) == 4:
+                self.combination = FourOfAKind([card for card in sorted_cards if card.value == values[i]])
                 return FOUR_OF_A_KIND
 
         has_three_of_a_kind = False
+        three_of_a_kind_value = 0
         for i in range(0, 5):
             print(values.count(values[i]))
             if values.count(values[i]) == 3:
                 has_three_of_a_kind = True
+                three_of_a_kind_value = values[i]
 
         pairs = []
         for i in range(0, 5):
@@ -244,24 +317,30 @@ class Hand(CardContainer):
                     pairs.append(values[i])
 
         if has_three_of_a_kind and len(pairs) == 1:
+            self.combination = FullHouse(sorted_cards)
             return FULL_HOUSE
 
         if is_flush:
+            self.combination = Flush(sorted_cards)
             return FLUSH
 
         if is_straight:
+            self.combination = Straight(sorted_cards)
             return STRAIGHT
 
         if has_three_of_a_kind:
+            self.combination = ThreeOfAKind([card for card in sorted_cards if card.value == three_of_a_kind_value])
             return THREE_OF_A_KIND
 
         if len(pairs) == 2:
+            self.combination = TwoPairs([card for card in sorted_cards if (card.value == pairs[0] or card.value == pairs[1])])
             return TWO_PAIRS
 
         if len(pairs) == 1:
+            self.combination = OnePair([card for card in sorted_cards if card.value == pairs[0]])
             return ONE_PAIR
 
-        self.hand_data = Card(suits[4], values[4])
+        self.combination = HighCard([sorted_cards[4]])
         return HIGH_CARD
 
     def swap_card(self, old_card, new_card):
@@ -285,21 +364,39 @@ class Hand(CardContainer):
         output += "|\n+==========================================+"
         return output
 
+    def compare(self, other):
+        if self.hand_type > other.hand_type:
+            return WIN
+        elif self.hand_type < other.hand_type:
+            return LOSE
+        else:
+            return self.combination.compare(other.combination)
+
 card = Card(3, 14)
 print(card)
 
 try:
+#if True:
     cards = []
     for i in range(0, 5):
-        value = int(input("Enter the card value:\n_> "))
-        suit = int(input("Enter the card suit:\n_> "))
+        value = int(input("Enter the card value:_> "))
+        suit = int(input("Enter the card suit:_> "))
         cards.append(Card(suit, value))
 
-    hand = Hand(cards)
+    hand1 = Hand(cards)
+    cards.clear()
+    for i in range(0, 5):
+        value = int(input("Enter the card value:_> "))
+        suit = int(input("Enter the card suit:_> "))
+        cards.append(Card(suit, value))
+
+    hand2 = Hand(cards)
+
+
 except Exception as e:
     print("**** ERROR ****\n", e, sep="")
     quit()
 
 print(hand)
 print(hand.hand_type)
-print(hand.hand_data)
+print(hand.combination)
