@@ -372,6 +372,45 @@ class Hand(CardContainer):
         else:
             return self.combination.compare(other.combination)
 
+class Bet:
+
+    def __init__(self, amount, player):
+        self.amount = amount
+        self.player = player
+
+class Pot:
+
+    def __init__(self):
+        self.amount = int("0")
+        self.bet_list = []
+
+    def add_bet(self, bet):
+        if bet.amount >= self.bet_list[-1].amount:
+            self.bet_list.append(bet)
+            self.amount += bet.amount
+
+    def get_amount(self):
+        return self.amount
+
+class Table:
+
+    def __init__(self, players=[]):
+        # essential elemnts for a poker table
+        self.players = players
+        self.pot = Pot()
+        self.deck = Deck()
+
+    def generate_hand(self): # this function will return an array of 5 cards
+                             # taken from the  deck
+        pass
+
+class Player:
+
+    def __init__(self, table):
+        self.hand = Hand(table.generate_hand())
+        self.wealth = 0
+
+
 card = Card(3, 14)
 print(card)
 
@@ -397,6 +436,10 @@ except Exception as e:
     print("**** ERROR ****\n", e, sep="")
     quit()
 
-print(hand)
-print(hand.hand_type)
-print(hand.combination)
+print(hand1)
+print(hand2)
+print(hand1.hand_type)
+print(hand2.hand_type)
+print(hand1.combination)
+print(hand2.combination)
+print(hand1.compare(hand2))
