@@ -41,12 +41,12 @@ class Config:
         else:
             options = data.split(",")
             try:
-                self.map_size = Vector2D(int(options[0], int(options[1]))
+                self.map_size = Vector2D(int(options[0]), int(options[1]))
             except:
                 self.map_size = Vector2D(9, 9)
 
     def save_config(self):
-        
+        pass
 
 class Menu:
 
@@ -79,17 +79,26 @@ class Controller:
     def __init__(self):
         self.fileIO = FileIO()
         self.is_running = True
-        print("
-        self.start_menu = Menu("Welcome to the Minefield game!\nThe game rules are:\n"
+        self.welcome_user()
+        self.display_rules()
+#        self.start_menu = Menu(
 
     def update(self):
         pass
 
     def welcome_user(self):
-        pass
+        print("\n\n\n\n\nWelcome to the Minefield game!\nThis game was created by:\n----------------------------")
+        print("| Vinicius Salem Henrique\n| Southern Cross University\n| Student ID = 24897817\n----------------------------")
 
     def display_rules(self):
-        
+        print("The game consists of a minefield, represented by a grid with several squares arranged in rows and columns.")
+        print("Each square may or may not contain a mine, and your aim is to reveal all safe squares (those that don't contain a mine).")
+        print("However, if you click on a square that contains a mine, it will explode and you’ll lose the game!\n")
+        print("To select a square, simply type the X and Y coordinates of the square. Then, you can choose an action to perform over this square.")
+        print("Your available actions are:\n1. Inspect -> this will reveal if there is a bomb on this square or not; You must do this for every safe square in the game")
+        print("2. Flag -> This action marks the square as a bomb. It makes easier to keep track of all places you are sure to have a bomb")
+        print("3. Question -> This action marks the square with a question mark (?), meaning 'it is possibly a bomb' to warn you to take care")
+        print("That is it, super simple! Have fun!")
 
 class Vector2D:
 
