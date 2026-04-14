@@ -62,12 +62,12 @@ class Menu:
 
     def interact(self):
         print(self.text, "\n")
-        for index, option in options:
-            print(f"{str(index)}. {option}")
+        for option, index in self.options.items():
+            print(f"{index}. {option}")
         option_input = input("Type the desired option index\n_> ")
         try:
             option = int(option_input)
-            if option in self.options.keys():
+            if option in self.options.values():
                 return option
             else:
                 return self.interact()
@@ -78,10 +78,14 @@ class Controller:
 
     def __init__(self):
         self.fileIO = FileIO()
+        self.config = Config(self)
+
+    def init(self):
         self.is_running = True
         self.welcome_user()
         self.display_rules()
-#        self.start_menu = Menu(
+        self.start_menu = Menu("Now, you can select to play a new game or resume a saved one.", { "1. New game" : 1, "2. Resume game" : 2 })
+        print(self.start_menu.interact())
 
     def update(self):
         pass
@@ -95,9 +99,10 @@ class Controller:
         print("Each square may or may not contain a mine, and your aim is to reveal all safe squares (those that don't contain a mine).")
         print("However, if you click on a square that contains a mine, it will explode and you’ll lose the game!\n")
         print("To select a square, simply type the X and Y coordinates of the square. Then, you can choose an action to perform over this square.")
-        print("Your available actions are:\n1. Inspect -> this will reveal if there is a bomb on this square or not; You must do this for every safe square in the game")
-        print("2. Flag -> This action marks the square as a bomb. It makes easier to keep track of all places you are sure to have a bomb")
-        print("3. Question -> This action marks the square with a question mark (?), meaning 'it is possibly a bomb' to warn you to take care")
+        print("Your available actions are:\n1. Inspect -> revelas if there is a bomb on this square or not; You must do this for every safe square in the game")
+        print("2. Flag -> Marks the square as a bomb. It makes easier to keep track of all places you are sure to have a bomb")
+        print("3. Question -> Marks the square with a question mark (?), meaning 'it is possibly a bomb' to warn you to take care")
+        print("4. Help -> Displays this rules")
         print("That is it, super simple! Have fun!")
 
 class Vector2D:
@@ -220,6 +225,7 @@ class Cell:
 
 def main():
     controller = Controller()
+    controller.init()
     while controller.is_running:
         controller.update()
     controller.finalise()
