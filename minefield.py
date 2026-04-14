@@ -1,8 +1,9 @@
 import random
 
-SAVE_FILE_FILEPATH = "old_session.txt"
+SAVE_SESSION_FILEPATH = "old_session.txt"
 SAVE_SCORE_FILEPATH = "scores.txt"
 SAVE_CONFIG_FILEPATH = "minefield.conf"
+MESSAGES_FILEPATH = "messages.txt"
 
 class FileIO:
 
@@ -33,20 +34,26 @@ class FileIO:
 
 class Config:
 
-    def __init__(self, controller):
-        self.controller = controller
-        success, data = self.controller.fileIO.read(SAVE_CONFIG_FILEPATH)
-        if not success:
-            self.map_size = Vector2D(9, 9)
-        else:
-            options = data.split(",")
-            try:
-                self.map_size = Vector2D(int(options[0]), int(options[1]))
-            except:
-                self.map_size = Vector2D(9, 9)
+    def __init__(self, controller, data=None):
+        if not data: # initialise to the defaults
+            self.configs = {
+                "map_size" : Vector2D(10, 10)
+            }
+            return
 
-    def save_config(self):
-        pass
+        try:
+            options = data.split(",")
+            self.configs = {
+            "map_size" : Vector2D(int(options[0]), int(options[1]))
+            }
+
+        except: # if an error occurs, reset to the defaults
+            self.configs = {
+                "map_size" : Vector2D(10, 10)
+            }
+
+    def get_config_value(self, key):
+        return self.configs.get(key)
 
 class Menu:
 
@@ -74,18 +81,49 @@ class Menu:
         except:
             return self.interact()
 
+class Messages:
+
+    def __init__(self, data):
+        self.messages = {}
+        try:
+            # here I am using a separator which is very hard to accidentally write on the file
+            messages = data.split("//$@#//")
+            i = 0
+            while i < len(messages) - 1:
+                self.messages[messages[i]] = messages[i + 1]
+                i += 2
+        except:
+            self.messages.clear()
+            self.messages = {
+                "error": "No messages could be loaded"
+            }
+
+    def get_message(self, key):
+        return self.messages.get(key)
+
 class Controller:
 
     def __init__(self):
         self.fileIO = FileIO()
         self.config = Config(self)
+        success, data = self.fileIO.read(MESSAGES_FILEPATH)
+        self.messages = Messages()
 
     def init(self):
         self.is_running = True
-        self.welcome_user()
+#        self.welcome_user()
+        print(self.messages.get_message("welcome"))
         self.display_rules()
         self.start_menu = Menu("Now, you can select to play a new game or resume a saved one.", { "1. New game" : 1, "2. Resume game" : 2 })
-        print(self.start_menu.interact())
+        if self.start_menu.interact() == 1:
+            self.map = Map(self)
+            return
+        else:
+            success, data = self.fileIO.read(SAVE_SESSION_FILEPATH)
+            if not success:
+                self.map = Map(self)
+                return
+            self.map = Map(data)
 
     def update(self):
         pass
@@ -116,21 +154,16 @@ class Vector2D:
 
 class Map:
 
-    def __init__(self, controller, load_old_session=False):
+    def __init__(self, controller, old_map_data=None):
         self.controller = controller
-        self.size = self.contoller.config.get_map_size()
+        self.size = self.controller.config.get_config_value("map_size")
         self.grid = []
-        if load_old_session:
-            success, map_data = self.controller.fileIO.read(SAVE_FILE_FILEPATH)
-            if not success:
-                self.generate_map()
-                self.new_game = True
+        if old_map_data:
+            if self.load(old_map_data):
+                self.new_game = False
             else:
-                if self.load(map_data):
-                    self.new_game = False
-                else:
-                    self.generate_map()
-                    self.new_map = True
+                self.generate_map()
+                self.new_map = True
         else:
             self.generate_map()
             self.new_game = True
@@ -209,6 +242,14 @@ class Cell:
         if self.map.is_bomb(self.pos.Y - 1, self.pos.X):
             self.bombs_around += 1
         if self.map.is_bomb(self.pos.Y + 1, self.pos.X):
+            self.bombs_around += 1
+        if self.map.is_bomb(self.pos.Y - 1, self.pos.X - 1):
+            self.bombs_around += 1
+        if self.map.is_bomb(self.pos.Y - 1, self.pos.X + 1):
+            self.bombs_around += 1
+        if self.map.is_bomb(self.pos.Y + 1, self.pos.X + 1):
+            self.bombs_around += 1
+        if self.map.is_bomb(self.pos.Y + 1, self.pos.X - 1):
             self.bombs_around += 1
 
     def show(self):
