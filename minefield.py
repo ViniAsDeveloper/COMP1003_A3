@@ -1,8 +1,8 @@
 import random
 
-SAVE_SESSION_FILEPATH = "old_session.txt"
-SAVE_SCORE_FILEPATH = "scores.txt"
-SAVE_CONFIG_FILEPATH = "minefield.conf"
+SESSION_FILEPATH = "old_session.txt"
+SCORE_FILEPATH = "scores.txt"
+CONFIG_FILEPATH = "minefield.conf"
 MESSAGES_FILEPATH = "messages.txt"
 
 class FileIO:
@@ -16,7 +16,7 @@ class FileIO:
                 content = file.read()
                 return (True, content)
         except:
-            return (False, "")
+            return (False, None)
 
     def write(self, filepath, data, append=True):
         if append:
@@ -55,6 +55,12 @@ class Config:
     def get_config_value(self, key):
         return self.configs.get(key)
 
+def safe_input(mesage, options_list):
+    text_input = input(message)
+    if not text_input in options_list:
+        return safe_input(message, options_list)
+    return text_input
+
 class Menu:
 
     # to the option parameters should be passed a hashmap (or dictionary, in Python naming) containing
@@ -70,7 +76,7 @@ class Menu:
     def interact(self):
         print(self.text, "\n")
         for option, index in self.options.items():
-            print(f"{index}. {option}")
+            print(f"{option}")
         option_input = input("Type the desired option index\n_> ")
         try:
             option = int(option_input)
@@ -90,7 +96,7 @@ class Messages:
             messages = data.split("//$@#//")
             i = 0
             while i < len(messages) - 1:
-                self.messages[messages[i]] = messages[i + 1]
+                self.messages[messages[i].strip()] = messages[i + 1]
                 i += 2
         except:
             self.messages.clear()
@@ -104,44 +110,28 @@ class Messages:
 class Controller:
 
     def __init__(self):
+        """Here, I must initialise all components strictly necessary to the class, so that if something fails, it will throw and prevent object creation """
         self.fileIO = FileIO()
+        success, data = self.fileIO.read(CONFIG_FILEPATH)
         self.config = Config(self)
         success, data = self.fileIO.read(MESSAGES_FILEPATH)
-        self.messages = Messages()
+        self.messages = Messages(data)
+        self.is_running = True
 
     def init(self):
-        self.is_running = True
-#        self.welcome_user()
         print(self.messages.get_message("welcome"))
-        self.display_rules()
-        self.start_menu = Menu("Now, you can select to play a new game or resume a saved one.", { "1. New game" : 1, "2. Resume game" : 2 })
-        if self.start_menu.interact() == 1:
+        input("Press Enter to start!")
+        print(self.messages.get_message("rules"))
+        start_menu = Menu("Now, you can select to play a new game or resume a saved one.", { "1. New game" : 1, "2. Resume game" : 2 })
+        if start_menu.interact() == 1:
             self.map = Map(self)
             return
         else:
             success, data = self.fileIO.read(SAVE_SESSION_FILEPATH)
-            if not success:
-                self.map = Map(self)
-                return
             self.map = Map(data)
 
     def update(self):
         pass
-
-    def welcome_user(self):
-        print("\n\n\n\n\nWelcome to the Minefield game!\nThis game was created by:\n----------------------------")
-        print("| Vinicius Salem Henrique\n| Southern Cross University\n| Student ID = 24897817\n----------------------------")
-
-    def display_rules(self):
-        print("The game consists of a minefield, represented by a grid with several squares arranged in rows and columns.")
-        print("Each square may or may not contain a mine, and your aim is to reveal all safe squares (those that don't contain a mine).")
-        print("However, if you click on a square that contains a mine, it will explode and you’ll lose the game!\n")
-        print("To select a square, simply type the X and Y coordinates of the square. Then, you can choose an action to perform over this square.")
-        print("Your available actions are:\n1. Inspect -> revelas if there is a bomb on this square or not; You must do this for every safe square in the game")
-        print("2. Flag -> Marks the square as a bomb. It makes easier to keep track of all places you are sure to have a bomb")
-        print("3. Question -> Marks the square with a question mark (?), meaning 'it is possibly a bomb' to warn you to take care")
-        print("4. Help -> Displays this rules")
-        print("That is it, super simple! Have fun!")
 
 class Vector2D:
 

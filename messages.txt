@@ -1,0 +1,30 @@
+welcome
+//$@#//
+
+
+
+
+Welcome to the Minefield game!
+This game was created by:
+----------------------------
+| Vinicius Salem Henrique
+| Southern Cross University
+| Student ID = 24897817
+----------------------------
+
+//$@#//
+rules
+//$@#//
+The game consists of a minefield, represented by a grid with several squares arranged in rows and columns.
+Each square may or may not contain a mine, and your aim is to reveal all safe squares (those that don't contain a mine).
+However, if you click on a square that contains a mine, it will explode and you’ll lose the game!
+
+To select a square, simply type the X and Y coordinates of the square. Then, you can choose an action to perform over this square.
+Your available actions are:
+
+1. Inspect -> revelas if there is a bomb on this square or not; You must do this for every safe square in the game")
+2. Flag -> Marks the square as a bomb. It makes easier to keep track of all places you are sure to have a bomb
+3. Question -> Marks the square with a question mark (?), meaning 'it is possibly a bomb' to warn you to take care
+4. Help -> Displays this rules
+
+That is it, super simple! Have fun!
