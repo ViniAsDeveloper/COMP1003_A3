@@ -67,8 +67,8 @@ class Config:
     def get_config_value(self, key):
         return self.configs.get(key)
 
-def safe_input(mesage, options_list):
-    text_input = input(message)
+def safe_input(message, options_list):
+    text_input = input(message + "\n_> ")
     if not text_input in options_list:
         return safe_input(message, options_list)
     return text_input
@@ -158,11 +158,11 @@ class Controller:
             square_x = int(safe_input("Enter the X coordinate of the selected square", NUMBERS_LIST))
             square_y = int(safe_input("Enter the Y coordinate of the selected square", NUMBERS_LIST))
             if action == 1:
-                self.map.reveal(Vector2D(square_x, square_y), True)
+                self.map.reveal(Vector2D(square_x, square_y))
             elif action == 2:
-                self.map.flag(Vector2D(square_x, square_y)
+                self.map.flag(Vector2D(square_x, square_y))
             elif action == 3:
-                self.map.question(Vector2D(square_x, square_y)
+                self.map.question(Vector2D(square_x, square_y))
             else:
                 return
             return
@@ -175,6 +175,7 @@ class Controller:
                 self.state = "Q" # Q stands for "Quiting"
             elif action == 6:
                 self.is_running = False
+                self.state = "Q"
 
     def loose(self):
         self.is_running = False
@@ -230,13 +231,23 @@ class Map:
 
         return result
 
-    def reveal(self, pos, interacting=False):
+    def bombs_around(self, pos):
+        bombs_around = 0
+        for offset_y in range(-1, 2):
+            for offset_x in range(-1, 2):
+                if self.is_bomb(Vector2D(pos.X + offset_x, pos.Y + offset_y)):
+                    bombs_around += 1
+        return bombs_around
+
+    def reveal(self, pos, previous_pos=[]):
         """Safe method to reveal a given position in the map"""
-        try:
-            self.grid[pos.Y][pos.X].reveal(interacting)
-        except:
-            return
-        return
+        if not previous_pos:
+            current_cell = self.get_cell(pos)
+            if not current_cell:
+                return False
+            if current_cell.reveal():
+                return True
+            
 
     def generate_map(self):
         """Generates the map by populating the grid with Cells, randomly add bombs to some of these Cells"""
@@ -244,11 +255,27 @@ class Map:
         for i in range(self.size.Y):
             self.grid.append([])
             for j in range(self.size.X):
-                if random.random() < 0.17:
-                    is_bomb = True
-                else:
-                    is_bomb = False
-                self.grid[i].append(Cell(Vector2D(j, i), is_bomb, self))
+                self.grid[i].append(Cell(Vector2D(j, i), False, self))
+        i = 10
+        bombs_placed = []
+        while i > 0:
+            bomb_x = random.randint(0, 9)
+            bomb_y = random.randint(0, 9)
+            coordinates = (bomb_x, bomb_y)
+            # skip the location if it already has a bomb in it
+            if coordinates not in bombs_placed:
+                self.grid[bomb_y][bomb_x].is_bomb = True
+                i -= 1
+        for i in range(self.size.Y):
+            for j in range(self.size.X):
+                self.grid[i][j].bombs_around = self.bombs_around(Vector2D(j, i))
+
+    def get_cell(self, pos):
+        try:
+            result = self.grid[pos.Y][pos.X]
+            return result
+        except:
+            return None
 
     def serialise_map(self):
         """Serialises map data so that is can be written to a file as a string"""
@@ -296,37 +323,30 @@ class Cell:
     def __init__(self, position, is_bomb, map):
         self.pos = position
         self.is_bomb = is_bomb
-        self.bombs_around = 0
+        self.bombs_around = map.bombs_around(position)
         self.map = map
         self.is_hidden = True
         self.state = self.NORMAL
 
-    def look_around(self):
-        """Checks how many cells containing a bomb are around this cell to display this information to the player"""
-        for i in range(-1, 2):
-            for j in range(-1, 2):
-                if self.map.is_bomb(i, j):
-                    self.bombs_around += 1
-        return self.bombs_around
-
-    def reveal(self, interacting=False, type=None):
-        if interacting and self.is_bomb:
+    def reveal(self):
+        if self.is_bomb:
             self.map.controller.loose()
-            return
+            return True
         self.is_hidden = False
-        # TODO: implement recursive discovery of cells of the same type
+        return False
 
     def __repr__(self):
         if self.is_hidden:
-            return f"[ {self.state} ]"
+            return f"[{self.state}]"
 
-        return f"[ {self.bombs_around} ]"
+        return f"[{self.bombs_around}]"
 
 def main():
     controller = Controller()
     controller.init()
     while controller.is_running:
         controller.update()
+        print("avude")
     controller.finalise()
 
 if __name__ == "__main__": main()
