@@ -158,7 +158,9 @@ class Controller:
             square_x = int(safe_input("Enter the X coordinate of the selected square", NUMBERS_LIST))
             square_y = int(safe_input("Enter the Y coordinate of the selected square", NUMBERS_LIST))
             if action == 1:
-                self.map.reveal(Vector2D(square_x, square_y))
+                if self.map.reveal(Vector2D(square_x, square_y)):
+                    self.is_running = False
+                    self.state = "L"
             elif action == 2:
                 self.map.flag(Vector2D(square_x, square_y))
             elif action == 3:
@@ -199,6 +201,9 @@ class Vector2D:
 
     def __repr__(self):
         return f"({self.X}, {self.Y})"
+
+    def __eq__(self, other):
+        return self.X == other.X and self.Y == other.Y
 
 class Map:
 
@@ -241,13 +246,32 @@ class Map:
 
     def reveal(self, pos, previous_pos=[]):
         """Safe method to reveal a given position in the map"""
-        if not previous_pos:
-            current_cell = self.get_cell(pos)
-            if not current_cell:
-                return False
-            if current_cell.reveal():
-                return True
-            
+        if pos in previous_pos:
+            return
+        previous_pos.append(pos)
+        current_cell = self.get_cell(pos)
+        if not current_cell:
+            return
+
+        if current_cell.is_bomb:
+            return True
+
+        current_cell.is_hidden = False
+        if current_cell.bombs_around != 0:
+            return
+
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                next_cell = self.get_cell(Vector2D(pos.X + j, pos.Y + i))
+                if (not next_cell) or (next_cell.pos in previous_pos):
+                    print("a")
+                    continue
+#                if next_cell.bombs_around != 0:
+#                    next_cell.is_hidden = False
+#                    previous_pos.append(next_cell.pos)
+#                    continue
+                if next_cell.is_hidden:
+                    self.reveal(next_cell.pos, previous_pos)
 
     def generate_map(self):
         """Generates the map by populating the grid with Cells, randomly add bombs to some of these Cells"""
@@ -310,7 +334,7 @@ class Map:
         for i in range(self.size.Y):
             print()
             for j in range(self.size.X):
-                print(self.grid[i][j], " ", end="")
+                print(self.grid[i][j], "", end="")
         print()
 
 class Cell:
@@ -346,7 +370,6 @@ def main():
     controller.init()
     while controller.is_running:
         controller.update()
-        print("avude")
     controller.finalise()
 
 if __name__ == "__main__": main()
