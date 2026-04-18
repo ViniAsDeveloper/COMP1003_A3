@@ -125,10 +125,11 @@ class Controller:
         start_menu = Menu("Now, you can select to play a new game or resume a saved one.", { "1. New game" : 1, "2. Resume game" : 2 })
         if start_menu.interact() == 1:
             self.map = Map(self)
-            return
         else:
             success, data = self.fileIO.read(SAVE_SESSION_FILEPATH)
             self.map = Map(data)
+
+        self.action_menu = Menu("", { "1. Reveal" : 1, "2. Flag" : 2, "3. Question" : 3 })
 
     def update(self):
         pass
@@ -215,6 +216,11 @@ class Map:
                 print(self.grid[i][j])
 
 class Cell:
+
+    NORMAL= " "
+    FLAG= "F"
+    QUESTION = "?"
+
 #                       Vector2D  bool    map
     def __init__(self, position, is_bomb, map):
         self.pos = position
@@ -222,6 +228,7 @@ class Cell:
         self.bombs_around = 0
         self.map = map
         self.is_hidden = True
+        self.state = NORMAL
 
     def look_around(self):
         """Checks how many cells containing a bomb are around this cell to display this information to the player"""
@@ -247,7 +254,7 @@ class Cell:
 
     def __repr__(self):
         if self.is_hidden:
-            return f"[   ]"
+            return f"[ {self.state} ]"
 
         if self.is_bomb:
             return f"[ B ]"
