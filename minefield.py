@@ -245,7 +245,7 @@ class Map:
         return bombs_around
 
     def reveal(self, pos, previous_pos=[]):
-        """Safe method to reveal a given position in the map"""
+
         if pos in previous_pos:
             return
         previous_pos.append(pos)
@@ -256,6 +256,9 @@ class Map:
         if current_cell.is_bomb:
             return True
 
+        if not current_cell.is_hidden:
+            return
+
         current_cell.is_hidden = False
         if current_cell.bombs_around != 0:
             return
@@ -264,13 +267,9 @@ class Map:
             for j in range(-1, 2):
                 next_cell = self.get_cell(Vector2D(pos.X + j, pos.Y + i))
                 if (not next_cell) or (next_cell.pos in previous_pos):
-                    print("a")
                     continue
-#                if next_cell.bombs_around != 0:
-#                    next_cell.is_hidden = False
-#                    previous_pos.append(next_cell.pos)
-#                    continue
                 if next_cell.is_hidden:
+                    print(next_cell.pos)
                     self.reveal(next_cell.pos, previous_pos)
 
     def generate_map(self):
@@ -295,6 +294,9 @@ class Map:
                 self.grid[i][j].bombs_around = self.bombs_around(Vector2D(j, i))
 
     def get_cell(self, pos):
+
+        if pos.X < 0 or pos.Y < 0:
+            return None
         try:
             result = self.grid[pos.Y][pos.X]
             return result
@@ -334,12 +336,12 @@ class Map:
         for i in range(self.size.Y):
             print()
             for j in range(self.size.X):
-                print(self.grid[i][j], "", end="")
+                print(self.grid[i][j], end="")
         print()
 
 class Cell:
 
-    NORMAL= " "
+    NORMAL= "+"
     FLAG= "F"
     QUESTION = "?"
 
@@ -352,18 +354,13 @@ class Cell:
         self.is_hidden = True
         self.state = self.NORMAL
 
-    def reveal(self):
-        if self.is_bomb:
-            self.map.controller.loose()
-            return True
-        self.is_hidden = False
-        return False
-
     def __repr__(self):
         if self.is_hidden:
-            return f"[{self.state}]"
+            return f"[ {self.state} ]"
 
-        return f"[{self.bombs_around}]"
+        if self.bombs_around == 0:
+            return "[   ]"
+        return f"[ {self.bombs_around} ]"
 
 def main():
     controller = Controller()
