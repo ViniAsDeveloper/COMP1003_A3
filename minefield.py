@@ -158,11 +158,11 @@ class Controller:
             square_x = int(safe_input("Enter the X coordinate of the selected square", NUMBERS_LIST))
             square_y = int(safe_input("Enter the Y coordinate of the selected square", NUMBERS_LIST))
             if action == 1:
-                self.map.reveal(square_y, square_x)
+                self.map.reveal(Vector2D(square_x, square_y), True)
             elif action == 2:
-                self.map.flag(square_y, square_x)
+                self.map.flag(Vector2D(square_x, square_y)
             elif action == 3:
-                self.map.question(square_y, square_x)
+                self.map.question(Vector2D(square_x, square_y)
             else:
                 return
             return
@@ -230,10 +230,10 @@ class Map:
 
         return result
 
-    def reveal(self, pos):
+    def reveal(self, pos, interacting=False):
         """Safe method to reveal a given position in the map"""
         try:
-            self.grid[pos.Y][pos.X].reveal()
+            self.grid[pos.Y][pos.X].reveal(interacting)
         except:
             return
         return
@@ -309,12 +309,12 @@ class Cell:
                     self.bombs_around += 1
         return self.bombs_around
 
-    def reveal(self):
-        if self.is_bomb:
+    def reveal(self, interacting=False, type=None):
+        if interacting and self.is_bomb:
             self.map.controller.loose()
             return
         self.is_hidden = False
-        
+        # TODO: implement recursive discovery of cells of the same type
 
     def __repr__(self):
         if self.is_hidden:
