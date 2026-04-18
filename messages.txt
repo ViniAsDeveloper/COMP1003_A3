@@ -12,19 +12,37 @@ This game was created by:
 | Student ID = 24897817
 ----------------------------
 
+Warning: I strongly recommend playing this game on a full-screen terminal
+rather than an IDE terminal, because of the terminal size.
+
 //$@#//
 rules
 //$@#//
-The game consists of a minefield, represented by a grid with several squares arranged in rows and columns.
-Each square may or may not contain a mine, and your aim is to reveal all safe squares (those that don't contain a mine).
-However, if you click on a square that contains a mine, it will explode and you’ll lose the game!
+The game consists of a minefield, represented by a grid with several squares
+arranged in rows and columns.
 
-To select a square, simply type the X and Y coordinates of the square. Then, you can choose an action to perform over this square.
+Each square may or may not contain a mine, and your goal is to reveal all
+safe squares (those that don't contain a mine).
+
+However, if you choose a square that contains a mine, it will explode
+and you’ll lose the game!
+
+To play, you must choose an action to perform.
 Your available actions are:
 
-1. Inspect -> revelas if there is a bomb on this square or not; You must do this for every safe square in the game")
-2. Flag -> Marks the square as a bomb. It makes easier to keep track of all places you are sure to have a bomb
-3. Question -> Marks the square with a question mark (?), meaning 'it is possibly a bomb' to warn you to take care
-4. Help -> Displays this rules
+1. Inspect -> Reveals if there is a bomb on the square or not; You must
+do this for every safe square in the game. If there is a bomb, you explode
+and loose the game! If not, this will tell you how many bombs are around
+this square.
 
-That is it, super simple! Have fun!
+2. Flag -> Marks the square as a bomb (F). It makes easier to keep track
+of all places you are sure to have a bomb.
+
+3. Question -> Marks the square with a question mark (?), meaning it is
+possibly a bomb, to warn you to take care.
+
+4. Help -> Displays this rules.
+
+5. Save and quit -> Saves the current session to be played later and exits.
+
+6. Quit -> Exits without saving the current session.

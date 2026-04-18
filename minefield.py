@@ -4,6 +4,18 @@ SESSION_FILEPATH = "old_session.txt"
 SCORE_FILEPATH = "scores.txt"
 CONFIG_FILEPATH = "minefield.conf"
 MESSAGES_FILEPATH = "messages.txt"
+NUMBERS_LIST = [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+]
 
 class FileIO:
 
@@ -126,13 +138,57 @@ class Controller:
         if start_menu.interact() == 1:
             self.map = Map(self)
         else:
-            success, data = self.fileIO.read(SAVE_SESSION_FILEPATH)
+            success, data = self.fileIO.read(SESSION_FILEPATH)
             self.map = Map(data)
 
-        self.action_menu = Menu("", { "1. Reveal" : 1, "2. Flag" : 2, "3. Question" : 3 })
+        self.action_menu = Menu("What do you want to do?",
+        {
+            "1. Reveal" : 1,
+            "2. Flag" : 2,
+            "3. Question" : 3,
+            "4. Help" : 4,
+            "5. Save and quit" : 5,
+            "6. Quit" : 6
+        })
 
     def update(self):
-        pass
+        self.map.display()
+        action = self.action_menu.interact()
+        if action < 4:
+            square_x = int(safe_input("Enter the X coordinate of the selected square", NUMBERS_LIST))
+            square_y = int(safe_input("Enter the Y coordinate of the selected square", NUMBERS_LIST))
+            if action == 1:
+                self.map.reveal(square_y, square_x)
+            elif action == 2:
+                self.map.flag(square_y, square_x)
+            elif action == 3:
+                self.map.question(square_y, square_x)
+            else:
+                return
+            return
+        elif action < 7:
+            if action == 4:
+                print(self.messages.get_message("rules"))
+            elif action == 5:
+                self.fileIO.write(SESSION_FILEPATH, self.map.serialise_map(), False)
+                self.is_running = False
+                self.state = "Q" # Q stands for "Quiting"
+            elif action == 6:
+                self.is_running = False
+
+    def loose(self):
+        self.is_running = False
+        self.state = "L" # L stands for "Lose"
+
+    def finalise(self):
+        if self.state == "Q":
+            return
+        elif self.state == "W":
+            print(self.messages.get_message("win"))
+        elif self.state == "L":
+            print(self.messages.get_message("loose"))
+        else:
+            return
 
 class Vector2D:
 
@@ -167,7 +223,20 @@ class Map:
         if not (0 <= pos.Y < self.size.Y):
             return False
 
-        return self.grid[pos.Y, pos.X].is_bomb
+        try:
+            result = self.grid[pos.Y][pos.X].is_bomb
+        except:
+            result = False
+
+        return result
+
+    def reveal(self, pos):
+        """Safe method to reveal a given position in the map"""
+        try:
+            self.grid[pos.Y][pos.X].reveal()
+        except:
+            return
+        return
 
     def generate_map(self):
         """Generates the map by populating the grid with Cells, randomly add bombs to some of these Cells"""
@@ -181,8 +250,8 @@ class Map:
                     is_bomb = False
                 self.grid[i].append(Cell(Vector2D(j, i), is_bomb, self))
 
-    def serialize_map(self):
-        """Serializes map data so that is can be written to a file as a string"""
+    def serialise_map(self):
+        """Serialises map data so that is can be written to a file as a string"""
         output = ""
         for i in range(self.size.Y):
             for j in range(self.size.X):
@@ -210,10 +279,12 @@ class Map:
             return False
         return True
 
-    def __repr__(self):
+    def display(self):
         for i in range(self.size.Y):
+            print()
             for j in range(self.size.X):
-                print(self.grid[i][j])
+                print(self.grid[i][j], " ", end="")
+        print()
 
 class Cell:
 
@@ -228,36 +299,26 @@ class Cell:
         self.bombs_around = 0
         self.map = map
         self.is_hidden = True
-        self.state = NORMAL
+        self.state = self.NORMAL
 
     def look_around(self):
         """Checks how many cells containing a bomb are around this cell to display this information to the player"""
-        if self.map.is_bomb(self.pos.Y, self.pos.X - 1):
-            self.bombs_around += 1
-        if self.map.is_bomb(self.pos.Y, self.pos.X + 1):
-            self.bombs_around += 1
-        if self.map.is_bomb(self.pos.Y - 1, self.pos.X):
-            self.bombs_around += 1
-        if self.map.is_bomb(self.pos.Y + 1, self.pos.X):
-            self.bombs_around += 1
-        if self.map.is_bomb(self.pos.Y - 1, self.pos.X - 1):
-            self.bombs_around += 1
-        if self.map.is_bomb(self.pos.Y - 1, self.pos.X + 1):
-            self.bombs_around += 1
-        if self.map.is_bomb(self.pos.Y + 1, self.pos.X + 1):
-            self.bombs_around += 1
-        if self.map.is_bomb(self.pos.Y + 1, self.pos.X - 1):
-            self.bombs_around += 1
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                if self.map.is_bomb(i, j):
+                    self.bombs_around += 1
+        return self.bombs_around
 
-    def show(self):
+    def reveal(self):
+        if self.is_bomb:
+            self.map.controller.loose()
+            return
         self.is_hidden = False
+        
 
     def __repr__(self):
         if self.is_hidden:
             return f"[ {self.state} ]"
-
-        if self.is_bomb:
-            return f"[ B ]"
 
         return f"[ {self.bombs_around} ]"
 
