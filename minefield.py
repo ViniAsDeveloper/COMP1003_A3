@@ -14,7 +14,8 @@ NUMBERS_LIST = [
     "6",
     "7",
     "8",
-    "9"
+    "9",
+    "c" # c to cancel the operation
 ]
 
 class FileIO:
@@ -71,7 +72,7 @@ def safe_input(message, options_list):
     text_input = input(message + "\n_> ")
     if not text_input in options_list:
         return safe_input(message, options_list)
-    return text_input
+    return text_input.strip().lower()
 
 class Menu:
 
@@ -146,17 +147,22 @@ class Controller:
             "1. Reveal" : 1,
             "2. Flag" : 2,
             "3. Question" : 3,
-            "4. Help" : 4,
-            "5. Save and quit" : 5,
-            "6. Quit" : 6
+            "4. Clear" : 4,
+            "5. Help" : 5,
+            "6. Save and quit" : 6,
+            "7. Quit" : 7
         })
 
     def update(self):
         self.map.display()
         action = self.action_menu.interact()
         if action < 4:
-            square_x = int(safe_input("Enter the X coordinate of the selected square", NUMBERS_LIST))
-            square_y = int(safe_input("Enter the Y coordinate of the selected square", NUMBERS_LIST))
+            square_x = safe_input("Enter the X coordinate of the selected square", NUMBERS_LIST)
+            square_y = safe_input("Enter the Y coordinate of the selected square", NUMBERS_LIST)
+            if square_x == "c" or square_y == "c":
+                return
+            square_x = int(square_x)
+            square_y = int(square_y)
             if action == 1:
                 if self.map.reveal(Vector2D(square_x, square_y)):
                     self.is_running = False
@@ -269,8 +275,15 @@ class Map:
                 if (not next_cell) or (next_cell.pos in previous_pos):
                     continue
                 if next_cell.is_hidden:
-                    print(next_cell.pos)
                     self.reveal(next_cell.pos, previous_pos)
+
+    def flag(self, pos):
+        cell = self.get_cell(pos)
+        if not cell:
+            return
+        if not cell.is_hidden:
+            return
+        cell.flag()
 
     def generate_map(self):
         """Generates the map by populating the grid with Cells, randomly add bombs to some of these Cells"""
@@ -304,16 +317,19 @@ class Map:
             return None
 
     def serialise_map(self):
+
         """Serialises map data so that is can be written to a file as a string"""
         output = ""
         for i in range(self.size.Y):
             for j in range(self.size.X):
                 output += f"{self.grid[j, i].is_bomb}\n"
+        return output
 
-    def load(self, serialized_data):
+    def load(self, serialised_data):
 
+        """Loads a map from serialised data"""
         self.grid.clear()
-        lines = serialized_data.slipt("\n")
+        lines = serialised_data.slipt("\n")
         try:
             # I my loop considers X and Y meassures of the map instead of just looping though all lines,
             # because I have to make sure that the amount of lines in enough to populate the entire map
@@ -333,16 +349,26 @@ class Map:
         return True
 
     def display(self):
+        print("  ", end="")
+        for i in range(self.size.X):
+            print(f"  {i} ", end="")
+
         for i in range(self.size.Y):
-            print()
+            print(f"\n{i} |", end="")
             for j in range(self.size.X):
-                print(self.grid[i][j], end="")
+                print(self.grid[i][j], sep="", end="")
+            print(f" {i}", end="")
+
+        print("\n  ", end="")
+        for i in range(self.size.X):
+            print(f"  {i} ", end="")
+
         print()
 
 class Cell:
 
-    NORMAL= "+"
-    FLAG= "F"
+    NORMAL= "."
+    FLAG = "F"
     QUESTION = "?"
 
 #                       Vector2D  bool    map
@@ -356,11 +382,20 @@ class Cell:
 
     def __repr__(self):
         if self.is_hidden:
-            return f"[ {self.state} ]"
+            return f" {self.state} |"
 
         if self.bombs_around == 0:
-            return "[   ]"
-        return f"[ {self.bombs_around} ]"
+            return "   |"
+        return f" {self.bombs_around} |"
+
+    def flag(self):
+        self.state = self.FLAG
+
+    def question(self):
+        self.state = self.QUESTION
+
+    def clear(self):
+        self.state = self.NORMAL
 
 def main():
     controller = Controller()
