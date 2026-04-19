@@ -1,7 +1,9 @@
+# Author: Vinicius Salem Henrique
+# Student ID: 24897817
+
 import random
 
 SESSION_FILEPATH = "old_session.txt"
-SCORE_FILEPATH = "scores.txt"
 CONFIG_FILEPATH = "minefield.conf"
 MESSAGES_FILEPATH = "messages.txt"
 NUMBERS_LIST = [
@@ -16,6 +18,11 @@ NUMBERS_LIST = [
     "8",
     "9",
     "c" # c to cancel the operation
+]
+
+YES_OR_NO = [
+    "y",
+    "n"
 ]
 
 class FileIO:
@@ -69,10 +76,10 @@ class Config:
         return self.configs.get(key)
 
 def safe_input(message, options_list):
-    text_input = input(message + "\n_> ")
+    text_input = input(message + "\n_> ").strip().lower()
     if not text_input in options_list:
         return safe_input(message, options_list)
-    return text_input.strip().lower()
+    return text_input
 
 class Menu:
 
@@ -130,17 +137,30 @@ class Controller:
         success, data = self.fileIO.read(MESSAGES_FILEPATH)
         self.messages = Messages(data)
         self.is_running = True
+        self.tried_to_quit = False
 
     def init(self):
+        if self.tried_to_quit:
+            self.tried_to_quit = False
+            return
         print(self.messages.get_message("welcome"))
         input("Press Enter to start!")
         print(self.messages.get_message("rules"))
-        start_menu = Menu("Now, you can select to play a new game or resume a saved one.", { "1. New game" : 1, "2. Resume game" : 2 })
+        start_menu = Menu("Now, you can select to play a new game or resume the last one.", { "1. New game" : 1, "2. Resume game" : 2 })
         if start_menu.interact() == 1:
             self.map = Map(self)
+            print("Starting fresh!\n")
         else:
             success, data = self.fileIO.read(SESSION_FILEPATH)
-            self.map = Map(data)
+            if not success:
+                print("Could not locate old session file. Starting fresh\n")
+            self.map = Map(self, data)
+            if self.map.loaded == "all":
+                print("Loaded the previous session\n")
+            elif self.map.loaded == "grid":
+                print("Could only load the previous grid; moves were lost!\n")
+            elif self.map.loaded == "nothing":
+                print("Failed to load the previous session. Starting fresh!\n")
 
         self.action_menu = Menu("What do you want to do?",
         {
@@ -156,48 +176,71 @@ class Controller:
     def update(self):
         self.map.display()
         action = self.action_menu.interact()
-        if action < 4:
+        if action < 5:
             square_x = safe_input("Enter the X coordinate of the selected square", NUMBERS_LIST)
-            square_y = safe_input("Enter the Y coordinate of the selected square", NUMBERS_LIST)
-            if square_x == "c" or square_y == "c":
+            if square_x == "c":
                 return
-            square_x = int(square_x)
-            square_y = int(square_y)
+            square_y = safe_input("Enter the Y coordinate of the selected square", NUMBERS_LIST)
+            if square_y == "c":
+                return
+            pos = Vector2D(int(square_x), int(square_y))
             if action == 1:
-                if self.map.reveal(Vector2D(square_x, square_y)):
-                    self.is_running = False
-                    self.state = "L"
+                self.map.reveal(pos)
+                if self.map.revealed_cells == 90:
+                    self.win()
+                else:
+                    self.map.register("reveal", pos)
             elif action == 2:
-                self.map.flag(Vector2D(square_x, square_y))
+                self.map.flag(pos)
+                self.map.register("flag", pos)
             elif action == 3:
-                self.map.question(Vector2D(square_x, square_y))
+                self.map.question(pos)
+                self.map.register("question", pos)
+            elif action == 4:
+                self.map.clear(pos)
+                self.map.register("clear", pos)
             else:
                 return
             return
-        elif action < 7:
-            if action == 4:
+        elif action < 8:
+            if action == 5:
                 print(self.messages.get_message("rules"))
-            elif action == 5:
-                self.fileIO.write(SESSION_FILEPATH, self.map.serialise_map(), False)
-                self.is_running = False
-                self.state = "Q" # Q stands for "Quiting"
             elif action == 6:
                 self.is_running = False
-                self.state = "Q"
+                self.quit = True
+                self.save = True
+            elif action == 7:
+                self.is_running = False
+                self.quit = True
+                self.save = False
 
     def loose(self):
+        self.map.display(True)
+        print(self.messages.get_message("loose"))
         self.is_running = False
-        self.state = "L" # L stands for "Lose"
+        self.quit = False
+
+    def win(self):
+        self.map.display(True)
+        print(self.messages.get_message("win"))
+        self.is_running = False
+        self.quit = False
 
     def finalise(self):
-        if self.state == "Q":
-            return
-        elif self.state == "W":
-            print(self.messages.get_message("win"))
-        elif self.state == "L":
-            print(self.messages.get_message("loose"))
+        if self.quit:
+            if safe_input("Do you really want to quit? [y/n]", YES_OR_NO) == "y":
+                if self.save:
+                    self.fileIO.write(SESSION_FILEPATH, self.map.serialise_map(), False)
+                return "quit"
+            else:
+                self.tried_to_quit = True
+                self.is_running = True
+                return "keep"
         else:
-            return
+            if safe_input("Do you want to play again?", YES_OR_NO):
+                return "again"
+            else:
+                return "quit"
 
 class Vector2D:
 
@@ -217,15 +260,21 @@ class Map:
         self.controller = controller
         self.size = self.controller.config.get_config_value("map_size")
         self.grid = []
+        self.moves = []
+        self.revealed_cells = 0
         if old_map_data:
-            if self.load(old_map_data):
-                self.new_game = False
+            success, error = self.load(old_map_data)
+            if not success:
+                if error == "grid":
+                    self.loaded = "nothing"
+                    self.generate_map()
+                elif error == "moves":
+                    self.loaded = "grid"
             else:
-                self.generate_map()
-                self.new_map = True
+                self.loaded = "all"
         else:
             self.generate_map()
-            self.new_game = True
+            self.loaded = "new"
 
     def is_bomb(self, pos):
         """Safe method to check if a cell has a bomb - indexes out of the map range simply return False"""
@@ -254,18 +303,22 @@ class Map:
 
         if pos in previous_pos:
             return
+
         previous_pos.append(pos)
         current_cell = self.get_cell(pos)
+
         if not current_cell:
             return
 
         if current_cell.is_bomb:
-            return True
+            self.controller.loose()
+            return
 
         if not current_cell.is_hidden:
             return
 
         current_cell.is_hidden = False
+        self.revealed_cells += 1
         if current_cell.bombs_around != 0:
             return
 
@@ -284,6 +337,29 @@ class Map:
         if not cell.is_hidden:
             return
         cell.flag()
+        self.register("flag", pos)
+
+    def question(self, pos):
+        cell = self.get_cell(pos)
+        if not cell:
+            return
+        if not cell.is_hidden:
+            return
+        cell.question()
+        self.register("question", pos)
+
+    def clear(self, pos):
+        cell = self.get_cell(pos)
+        if not cell:
+            return
+        if not cell.is_hidden:
+            return
+        cell.clear()
+        self.register("clear", pos)
+
+    def register(self, move, pos):
+        if (move, pos) not in self.moves:
+            self.moves.append((move, pos))
 
     def generate_map(self):
         """Generates the map by populating the grid with Cells, randomly add bombs to some of these Cells"""
@@ -297,11 +373,13 @@ class Map:
         while i > 0:
             bomb_x = random.randint(0, 9)
             bomb_y = random.randint(0, 9)
-            coordinates = (bomb_x, bomb_y)
+            pos = Vector2D(bomb_x, bomb_y)
             # skip the location if it already has a bomb in it
-            if coordinates not in bombs_placed:
-                self.grid[bomb_y][bomb_x].is_bomb = True
+            if pos not in bombs_placed:
+                self.grid[pos.Y][pos.X].is_bomb = True
                 i -= 1
+                bombs_placed.append(pos)
+
         for i in range(self.size.Y):
             for j in range(self.size.X):
                 self.grid[i][j].bombs_around = self.bombs_around(Vector2D(j, i))
@@ -322,31 +400,74 @@ class Map:
         output = ""
         for i in range(self.size.Y):
             for j in range(self.size.X):
-                output += f"{self.grid[j, i].is_bomb}\n"
+                output += f"{self.grid[i][j].is_bomb}\n"
+        for i in range(len(self.moves)):
+            #               move type           move pos X          move pos Y
+            output += f"{self.moves[i][0]},{self.moves[i][1].X},{self.moves[i][1].Y}\n"
         return output
 
     def load(self, serialised_data):
 
         """Loads a map from serialised data"""
         self.grid.clear()
-        lines = serialised_data.slipt("\n")
+        lines = serialised_data.split("\n")
         try:
             # I my loop considers X and Y meassures of the map instead of just looping though all lines,
             # because I have to make sure that the amount of lines in enough to populate the entire map
             # If there is an index out of range exception, I know that there were not enough lines and
             # this allows me to safely clear the grid and return False
+            index = 0
+            # parsing cells
+            bombs = 0
             for i in range(self.size.Y):
                 self.grid.append([])
                 for j in range(self.size.X):
-                    if lines[i * self.size.X + j] == "True":
+                    index = i * self.size.X + j
+                    if lines[index].strip() == "True":
                         is_bomb = True
+                        bombs += 1
                     else:
                         is_bomb = False
                     self.grid[i].append(Cell(Vector2D(j, i), is_bomb, self))
+            if bombs != 10:
+                return (False, "grid")
+
+            for i in range(self.size.Y):
+                for j in range(self.size.X):
+                    self.grid[i][j].bombs_around = self.bombs_around(Vector2D(j, i))
         except:
             self.grid.clear()
-            return False
-        return True
+            return (False, "grid")
+
+        try:
+            for i in range(index + 1, len(lines)):
+                move_data = lines[i].split(",")
+                # ignore moves that don't follow the correct format
+                if len(move_data) != 3:
+                    continue
+                if move_data[0] not in ["flag", "reveal", "question", "clear"]:
+                    continue
+                self.moves.append((move_data[0], Vector2D(int(move_data[1]), int(move_data[2]))))
+        except:
+            return (False, "moves")
+
+        if self.simulate():
+            return (False, "grid")
+        return (True, "")
+
+    def simulate(self):
+        for move in self.moves:
+            if move[0] == "reveal":
+                if self.reveal(move[1]):
+                    return True
+            elif move[0] == "clear":
+                self.clear(move[1])
+            elif move[0] == "flag":
+                self.flag(move[1])
+            elif move[0] == "question":
+                self.question(move[1])
+            else:
+                continue
 
     def display(self):
         print("  ", end="")
@@ -397,11 +518,18 @@ class Cell:
     def clear(self):
         self.state = self.NORMAL
 
-def main():
-    controller = Controller()
+def main(controller=None):
+    if not controller:
+        controller = Controller()
     controller.init()
     while controller.is_running:
         controller.update()
-    controller.finalise()
+    result = controller.finalise()
+    if result == "quit":
+        return
+    elif result == "keep":
+        main(controller)
+    elif result == "again":
+        main()
 
 if __name__ == "__main__": main()
