@@ -1,0 +1,314 @@
+# This is the pseudocode for the Minefield game.
+# It is a simplified version, according to assessment instructions.
+# The purpose of this pseudocode is to describe the overall logic
+# and flow control of the program, while allowing diverse
+# language agnostic implementations.
+
+# Part 3 of this assessment also reveals that the pseudocode
+# has to be simplified, otherwise all GenAI tools would generate
+# similar implementaions to my own
+
+BEGIN minesweeper_program
+    SET controller = CREATE Controller()
+    CALL controller.init()
+
+    WHILE controller.is_running DO
+        CALL controller.update()
+    END WHILE
+
+    SET result = controller.finalise()
+
+    IF result == "keep" THEN
+        CALL main(controller)
+    ELSE IF result == "again" THEN
+        CALL main()
+    END IF
+END
+
+CLASS FileIO
+    METHOD read(filepath)
+        TRY
+            OPEN filepath FOR READING AS file
+                SET content = READ all FROM file
+            CLOSE file
+            RETURN (True, content)
+        CATCH
+            RETURN (False, None)
+    END METHOD
+
+    METHOD write(filepath, data, append)
+        SET mode = "append" OR "write"
+        TRY
+            OPEN filepath IN mode AS file
+                WRITE data TO file
+            CLOSE file
+            RETURN True
+        CATCH
+            RETURN False
+    END METHOD
+END CLASS
+
+CLASS Config
+    ATTRIBUTES:
+        configs
+
+    CONSTRUCTOR(controller, data)
+        IF data is empty THEN
+            SET configs TO defaults
+        ELSE
+            TRY
+                PARSE configs FROM data
+            CATCH
+                SET configs TO defaults
+        END IF
+    END CONSTRUCTOR
+
+    METHOD get_config_value(key)
+        RETURN configs[key]
+    END METHOD
+END CLASS
+
+FUNCTION safe_input(message, options_list)
+    GET user_input
+    IF user_input NOT IN options_list THEN
+        RETURN safe_input(message, options_list)
+    END IF
+    RETURN user_input
+END FUNCTION
+
+CLASS Menu
+    ATTRIBUTES:
+        text
+        options
+
+    CONSTRUCTOR(text, options)
+        SET attributes
+    END CONSTRUCTOR
+
+    METHOD interact()
+        DISPLAY text and options
+        GET option_input
+        IF option_input is valid THEN
+            RETURN option_value
+        ELSE
+            RETURN interact()
+        END IF
+    END METHOD
+END CLASS
+
+CLASS Messages
+    ATTRIBUTES:
+        messages
+
+    CONSTRUCTOR(messages_data)
+        TRY
+            PARSE messages_data INTO keys AND values
+            SET messages = map FROM keys AND values
+        CATCH
+            SET messages[key = "error"] = default_message
+    END CONSTRUCTOR
+
+    METHOD get_message(key)
+        RETURN messages[key]
+    END METHOD
+END CLASS
+
+CLASS Controller
+    ATTRIBUTES:
+        fileIO
+        config
+        messages
+        map
+        is_running
+        quit
+        save
+        tried_to_quit
+
+    CONSTRUCTOR()
+        INITIALISE fileIO
+        INITIALISE config
+        INITIALISE messages
+        SET is_running = True
+    END CONSTRUCTOR
+
+    METHOD init()
+        DISPLAY welcome AND rules
+        SET start_menu = CREATE Menu(start menu text AND options)
+        IF user select new game THEN
+            SET map = CREATE Map()
+        ELSE
+            SET map = CREATE Map(old_map)
+        END IF
+        SET action_menu = CREATE action_menu(action menu text AND options)
+    END METHOD
+
+    METHOD update()
+        CALL map.display()
+        GET action FROM CALL action_menu.interact()
+
+        IF action is reveal OR flag OR question OR clear THEN
+            GET coordinates
+            PERFORM action ON map
+        ELSE IF action is help THEN
+            DISPLAY rules
+        ELSE IF action is save and quit THEN
+            SET quit = True
+            SET save = True
+            SET is_running = False
+        ELSE IF action is quit THEN
+            SET quit = True
+            SET save = False
+            SET is_running = False
+        END IF
+    END METHOD
+
+    METHOD loose()
+        DISPLAY full map
+        DISPLAY lose message
+        SET is_running = False
+    END METHOD
+
+    METHOD win()
+        DISPLAY full map
+        DISPLAY win message
+        SET is_running = False
+    END METHOD
+
+    METHOD finalise()
+        IF quit THEN
+            ASK confirmation
+            IF confirmed THEN
+                IF save THEN
+                    SAVE session
+                END IF
+                RETURN "quit"
+            ELSE
+                RETURN "keep"
+            END IF
+        ELSE
+            ASK play again
+            RETURN "again" OR "quit"
+        END IF
+    END METHOD
+END CLASS
+
+CLASS Vector2D
+    ATTRIBUTES:
+        X
+        Y
+
+    CONSTRUCTOR(X, Y)
+        SET attributes
+    END CONSTRUCTOR
+END CLASS
+
+CLASS Map
+    ATTRIBUTES:
+        size
+        grid
+        moves
+        revealed_cells
+        loaded
+
+    CONSTRUCTOR(controller, old_map_data)
+        IF old_map_data THEN
+            TRY
+                CALL load(old_map_data)
+            EXCEPT
+                CAL generate_map()
+        ELSE
+            CALL generate_map()
+        END IF
+    END CONSTRUCTOR
+
+    METHOD generate_map()
+        SET grid = grid WITH empty squares
+        PLACE 10 random bombs
+        CALCULATE bombs_around for each cell
+    END METHOD
+
+    METHOD reveal(pos)
+        SET cell = CALL get_cell(pos)
+        IF cell is bomb THEN
+            CALL controller.loose()
+        ELSE
+            IF exit condition (cell is not hidden) THEN
+                RETURN        
+            SET cell.is_hidden = False
+            IF no bombs around THEN
+                CALL reveal(neighbouts pos) FOR EACH neighbour
+            END IF
+        END IF
+    END METHOD
+
+    METHOD flag(pos)
+        SET cell state to FLAG
+        CALL register(move information)
+    END METHOD
+
+    METHOD question(pos)
+        SET cell state to QUESTION
+        CALL register(move information)
+    END METHOD
+
+    METHOD clear(pos)
+        SET cell state to NORMAL
+        CALL register(move information)
+    END METHOD
+
+    METHOD register(move, pos)
+        ADD move to moves list
+    END METHOD
+
+    METHOD serialise_map()
+        RETURN string of bombs and moves
+    END METHOD
+
+    METHOD load(serialised_data)
+        TRY
+            SET grid = PARSE serialised_data INTO grid
+        EXCEPT:
+            SET grid = default gri
+            RETURN grid error code
+        TRY
+            SET moves = PARSE serialised_data INTO moves
+        EXCEPT:
+            RETURN moves error code
+        CALL simulate()
+    END METHOD
+
+    METHOD display()
+        DISPLAY grid with coordinates
+    END METHOD
+
+    METHOD simulate()
+        FOR EACH move IN moves DO:
+            PERFORM move
+        END FOR
+    END METHOD
+END CLASS
+
+CLASS Cell
+    ATTRIBUTES:
+        pos
+        is_bomb
+        bombs_around
+        is_hidden
+        state
+
+    CONSTRUCTOR(position, is_bomb, map)
+        SET attributes
+    END CONSTRUCTOR
+
+    METHOD flag()
+        SET state = FLAG
+    END METHOD
+
+    METHOD question()
+        SET state = QUESTION
+    END METHOD
+
+    METHOD clear()
+        SET state = NORMAL
+    END METHOD
+END CLASS

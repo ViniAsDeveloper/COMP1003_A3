@@ -25,6 +25,9 @@ YES_OR_NO = [
     "n"
 ]
 
+# this class could just be two separate functions. I just did it
+# this way because I am used to keeping things inside classes and using
+# resource locators or similar techniques to access functions.
 class FileIO:
 
     def __init__(self):
@@ -215,13 +218,13 @@ class Controller:
                 self.save = False
 
     def loose(self):
-        self.map.display(True)
+        self.map.display()
         print(self.messages.get_message("loose"))
         self.is_running = False
         self.quit = False
 
     def win(self):
-        self.map.display(True)
+        self.map.display()
         print(self.messages.get_message("win"))
         self.is_running = False
         self.quit = False
@@ -237,7 +240,7 @@ class Controller:
                 self.is_running = True
                 return "keep"
         else:
-            if safe_input("Do you want to play again?", YES_OR_NO):
+            if safe_input("Do you want to play again? [y/n]", YES_OR_NO):
                 return "again"
             else:
                 return "quit"
@@ -262,6 +265,7 @@ class Map:
         self.grid = []
         self.moves = []
         self.revealed_cells = 0
+        # try generating a map from data; fallback to default in case of failure
         if old_map_data:
             success, error = self.load(old_map_data)
             if not success:
@@ -292,6 +296,7 @@ class Map:
         return result
 
     def bombs_around(self, pos):
+        """Returns the amound of bombs around a given location"""
         bombs_around = 0
         for offset_y in range(-1, 2):
             for offset_x in range(-1, 2):
@@ -299,12 +304,12 @@ class Map:
                     bombs_around += 1
         return bombs_around
 
-    def reveal(self, pos, previous_pos=[]):
-
-        if pos in previous_pos:
-            return
-
-        previous_pos.append(pos)
+    def reveal(self, pos):
+        """Recursive method to reveal the map. It is adapted from a simple Flood Fill algorithm (in this case, DFS)"""
+#        if pos in previous_pos:
+#            return
+#
+#        previous_pos.append(pos)
         current_cell = self.get_cell(pos)
 
         if not current_cell:
@@ -325,12 +330,13 @@ class Map:
         for i in range(-1, 2):
             for j in range(-1, 2):
                 next_cell = self.get_cell(Vector2D(pos.X + j, pos.Y + i))
-                if (not next_cell) or (next_cell.pos in previous_pos):
+                if not next_cell:
                     continue
                 if next_cell.is_hidden:
-                    self.reveal(next_cell.pos, previous_pos)
+                    self.reveal(next_cell.pos)
 
     def flag(self, pos):
+        """Flags a cell and records the move"""
         cell = self.get_cell(pos)
         if not cell:
             return
@@ -340,6 +346,7 @@ class Map:
         self.register("flag", pos)
 
     def question(self, pos):
+        """Question a cell and records the move"""
         cell = self.get_cell(pos)
         if not cell:
             return
@@ -349,6 +356,7 @@ class Map:
         self.register("question", pos)
 
     def clear(self, pos):
+        """Clears a cell flag or question and records the move"""
         cell = self.get_cell(pos)
         if not cell:
             return
@@ -358,16 +366,17 @@ class Map:
         self.register("clear", pos)
 
     def register(self, move, pos):
+        """Records a move if it was not already done in this game"""
         if (move, pos) not in self.moves:
             self.moves.append((move, pos))
 
     def generate_map(self):
-        """Generates the map by populating the grid with Cells, randomly add bombs to some of these Cells"""
+        """Generates the map by populating the grid with Cells, then randomly adds bombs to some of these Cells"""
         self.grid.clear()
         for i in range(self.size.Y):
             self.grid.append([])
             for j in range(self.size.X):
-                self.grid[i].append(Cell(Vector2D(j, i), False, self))
+                self.grid[i].append(Cell(Vector2D(j, i), False, self)) # populate with non-bombs
         i = 10
         bombs_placed = []
         while i > 0:
@@ -385,7 +394,7 @@ class Map:
                 self.grid[i][j].bombs_around = self.bombs_around(Vector2D(j, i))
 
     def get_cell(self, pos):
-
+        """Returns a cell if exists, False otherwise"""
         if pos.X < 0 or pos.Y < 0:
             return None
         try:
@@ -395,7 +404,6 @@ class Map:
             return None
 
     def serialise_map(self):
-
         """Serialises map data so that is can be written to a file as a string"""
         output = ""
         for i in range(self.size.Y):
@@ -407,7 +415,6 @@ class Map:
         return output
 
     def load(self, serialised_data):
-
         """Loads a map from serialised data"""
         self.grid.clear()
         lines = serialised_data.split("\n")
@@ -432,6 +439,7 @@ class Map:
             if bombs != 10:
                 return (False, "grid")
 
+            # calculating bombs around each cell
             for i in range(self.size.Y):
                 for j in range(self.size.X):
                     self.grid[i][j].bombs_around = self.bombs_around(Vector2D(j, i))
@@ -440,6 +448,7 @@ class Map:
             return (False, "grid")
 
         try:
+            # parsing moves
             for i in range(index + 1, len(lines)):
                 move_data = lines[i].split(",")
                 # ignore moves that don't follow the correct format
@@ -456,6 +465,7 @@ class Map:
         return (True, "")
 
     def simulate(self):
+        """Runs all moves from the moves list, simulating a player"""
         for move in self.moves:
             if move[0] == "reveal":
                 if self.reveal(move[1]):
