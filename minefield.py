@@ -78,6 +78,14 @@ class Config:
     def get_config_value(self, key):
         return self.configs.get(key)
 
+    def serialise(self):
+        output = ""
+        output += str(self.get_config_value("map_size").X)
+        output += ","
+        output += str(self.get_config_value("map_size").Y)
+        output += "\n"
+        return output
+
 def safe_input(message, options_list):
     text_input = input(message + "\n_> ").strip().lower()
     if not text_input in options_list:
@@ -136,7 +144,7 @@ class Controller:
         """Here, I must initialise all components strictly necessary to the class, so that if something fails, it will throw and prevent object creation """
         self.fileIO = FileIO()
         success, data = self.fileIO.read(CONFIG_FILEPATH)
-        self.config = Config(self)
+        self.config = Config(self, data)
         success, data = self.fileIO.read(MESSAGES_FILEPATH)
         self.messages = Messages(data)
         self.is_running = True
@@ -234,6 +242,7 @@ class Controller:
             if safe_input("Do you really want to quit? [y/n]", YES_OR_NO) == "y":
                 if self.save:
                     self.fileIO.write(SESSION_FILEPATH, self.map.serialise_map(), False)
+                    self.fileIO.write(CONFIG_FILEPATH, self.config.serialise(), False)
                 return "quit"
             else:
                 self.tried_to_quit = True
@@ -243,6 +252,7 @@ class Controller:
             if safe_input("Do you want to play again? [y/n]", YES_OR_NO):
                 return "again"
             else:
+                self.fileIO.write(CONFIG_FILEPATH, self.config.serialise(), False)
                 return "quit"
 
 class Vector2D:
