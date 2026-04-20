@@ -33,7 +33,8 @@ Your available actions are:
 1. Inspect -> Reveals if there is a bomb on the square or not; You must
 do this for every safe square in the game. If there is a bomb, you explode
 and loose the game! If not, this will tell you how many bombs are around
-this square.
+this square. Revealing a square with no bombs around reveals multiple
+connected squares.
 
 2. Flag -> Marks the square as a bomb (F). It makes easier to keep track
 of all places you are sure to have a bomb.
@@ -41,11 +42,16 @@ of all places you are sure to have a bomb.
 3. Question -> Marks the square with a question mark (?), meaning it is
 possibly a bomb, to warn you to take care.
 
-4. Help -> Displays this rules.
+4. Clear -> Clears the mark (? or F) that you put on a square.
 
-5. Save and quit -> Saves the current session to be played later and exits.
+* The 4 actions above require you to enter the X and Y coordinates of
+the target square.
 
-6. Quit -> Exits without saving the current session.
+5. Help -> Displays this rules.
+
+6. Save and quit -> Saves the current session to be played later and exits.
+
+7. Quit -> Exits without saving the current session.
 //$@#//
 loose
 //$@#//

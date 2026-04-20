@@ -376,7 +376,7 @@ class Map:
         for i in range(self.size.Y):
             self.grid.append([])
             for j in range(self.size.X):
-                self.grid[i].append(Cell(Vector2D(j, i), False, self)) # populate with non-bombs
+                self.grid[i].append(Cell(Vector2D(j, i), False)) # populate with non-bombs
         i = 10
         bombs_placed = []
         while i > 0:
@@ -435,7 +435,7 @@ class Map:
                         bombs += 1
                     else:
                         is_bomb = False
-                    self.grid[i].append(Cell(Vector2D(j, i), is_bomb, self))
+                    self.grid[i].append(Cell(Vector2D(j, i), is_bomb))
             if bombs != 10:
                 return (False, "grid")
 
@@ -502,12 +502,10 @@ class Cell:
     FLAG = "F"
     QUESTION = "?"
 
-#                       Vector2D  bool    map
-    def __init__(self, position, is_bomb, map):
+#                       Vector2D  bool
+    def __init__(self, position, is_bomb):
         self.pos = position
         self.is_bomb = is_bomb
-        self.bombs_around = map.bombs_around(position)
-        self.map = map
         self.is_hidden = True
         self.state = self.NORMAL
 

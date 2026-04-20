@@ -257,6 +257,9 @@ CLASS Map
     END METHOD
 
     METHOD register(move, pos)
+        IF move IS IN moves list THEN
+            RETURN
+        END IF
         ADD move to moves list
     END METHOD
 
